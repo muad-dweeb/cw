@@ -1,5 +1,7 @@
 import argparse
 import os
+from datetime import datetime
+
 import pandas
 
 
@@ -13,18 +15,18 @@ class SheetManager(object):
         self.match_column = match_column
 
         # Required files
-        master_path = os.path.expanduser(master_file)
-        child_path = os.path.expanduser(child_file)
+        self.master_path = os.path.expanduser(master_file)
+        self.child_path = os.path.expanduser(child_file)
 
         # Existence validation
-        for f in {master_path, child_path}:
+        for f in {self.master_path, self.child_path}:
             if os.path.isfile(f):
                 print('Found file: {}'.format(f))
             else:
                 raise SheetManagerException('{} is not a file.'.format(f))
 
-        self.master = pandas.read_csv(master_path)
-        self.child = pandas.read_csv(child_path)
+        self.master = pandas.read_csv(self.master_path)
+        self.child = pandas.read_csv(self.child_path)
 
     def merge(self):
         """ Merge child into master using match_column """
@@ -51,13 +53,37 @@ class SheetManager(object):
 
     @staticmethod
     def __normalize_uid(uid):
+        """ Normalize the discrepancies in UIDs from different source sheets for easier comparison """
         return uid.replace('-', ' ')
 
     @staticmethod
     def __validate_uniqueness(some_list):
+        """ Use this to validate UID columns """
         if len(some_list) != len(set(some_list)):
             return False
         return True
+
+    @staticmethod
+    def __save_new_csv(path_prefix, file_contents, overwrite=False):
+        """ Save to a new CSV file with an incrementing filename unless overwrite is requested """
+        # YYYYMMDD
+        now_string = datetime.now().strftime('%Y%m%d')
+        # Remove any file extension from the path
+        path_prefix = os.path.splitext(path_prefix)[0]
+        full_path = '{}_{}.csv'.format(path_prefix, now_string)
+
+        if not overwrite:
+            increment = 1
+            while os.path.isfile(full_path):
+                full_path = '{}_{}_{}.csv'.format(path_prefix, now_string, increment)
+                increment += 1
+
+        try:
+            with open(full_path, 'w') as f:
+                f.write(file_contents)
+            print('File saved to: {}'.format(full_path))
+        except IOError as e:
+            raise SheetManagerException('Failed to save file: {} Error: {}'.format(full_path, e))
 
 
 if __name__ == '__main__':
@@ -83,5 +109,5 @@ if __name__ == '__main__':
         else:
             print('Operation \'{}\' is not supported')
 
-    except SheetManagerException as e:
-        print('Sheet management failed. Error: {}'.format(e))
+    except SheetManagerException as error:
+        print('Sheet management failed. Error: {}'.format(error))
