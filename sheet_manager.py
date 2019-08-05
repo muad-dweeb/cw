@@ -64,7 +64,7 @@ class SheetManager(object):
         return True
 
     @staticmethod
-    def save_new_csv(path_prefix, file_contents, overwrite=False):
+    def create_new_filename(path_prefix, overwrite_existing=False):
         """ Save to a new CSV file with an incrementing filename unless overwrite is requested """
         # YYYYMMDD
         now_string = datetime.now().strftime('%Y%m%d')
@@ -72,18 +72,13 @@ class SheetManager(object):
         path_prefix = path.splitext(path_prefix)[0]
         full_path = '{}_{}.csv'.format(path_prefix, now_string)
 
-        if not overwrite:
+        if not overwrite_existing:
             increment = 1
             while path.isfile(full_path):
                 full_path = '{}_{}_{}.csv'.format(path_prefix, now_string, increment)
                 increment += 1
 
-        try:
-            with open(full_path, 'w') as f:
-                f.write(file_contents)
-            print('File saved to: {}'.format(full_path))
-        except IOError as e:
-            raise SheetManagerException('Failed to save file: {} Error: {}'.format(full_path, e))
+        return full_path
 
 
 if __name__ == '__main__':
@@ -112,7 +107,8 @@ if __name__ == '__main__':
             parser.print_help()
             raise SheetManagerException('Operation \'{}\' is not supported')
 
-        manager.save_new_csv(path_prefix=manager.master_path, file_contents=updated_data, overwrite=overwrite)
+        new_file_path = manager.create_new_filename(path_prefix=manager.master_path, overwrite_existing=overwrite)
+        updated_data.to_csv(new_file_path)
 
-    except SheetManagerException as error:
+    except Exception as error:
         print('Sheet management failed. Error: {}'.format(error))
