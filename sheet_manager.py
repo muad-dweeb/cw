@@ -1,5 +1,5 @@
-import argparse
-import os
+from argparse import ArgumentParser
+from os import path
 from datetime import datetime
 
 import pandas
@@ -15,12 +15,12 @@ class SheetManager(object):
         self.match_column = match_column
 
         # Required files
-        self.master_path = os.path.expanduser(master_file)
-        self.child_path = os.path.expanduser(child_file)
+        self.master_path = path.expanduser(master_file)
+        self.child_path = path.expanduser(child_file)
 
         # Existence validation
         for f in {self.master_path, self.child_path}:
-            if os.path.isfile(f):
+            if path.isfile(f):
                 print('Found file: {}'.format(f))
             else:
                 raise SheetManagerException('{} is not a file.'.format(f))
@@ -64,17 +64,17 @@ class SheetManager(object):
         return True
 
     @staticmethod
-    def __save_new_csv(path_prefix, file_contents, overwrite=False):
+    def save_new_csv(path_prefix, file_contents, overwrite=False):
         """ Save to a new CSV file with an incrementing filename unless overwrite is requested """
         # YYYYMMDD
         now_string = datetime.now().strftime('%Y%m%d')
         # Remove any file extension from the path
-        path_prefix = os.path.splitext(path_prefix)[0]
+        path_prefix = path.splitext(path_prefix)[0]
         full_path = '{}_{}.csv'.format(path_prefix, now_string)
 
         if not overwrite:
             increment = 1
-            while os.path.isfile(full_path):
+            while path.isfile(full_path):
                 full_path = '{}_{}_{}.csv'.format(path_prefix, now_string, increment)
                 increment += 1
 
@@ -87,27 +87,32 @@ class SheetManager(object):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
+    parser = ArgumentParser()
     parser.add_argument('--master',       required=True, help='Path to the master sheet')
     parser.add_argument('--child',        required=True, help='Path to sheet to use for operating on the master sheet')
     parser.add_argument('--match-column', required=True, help='Column name to join sheets with')
     parser.add_argument('--operation',    required=True, help='Operation to perform', choices={'merge', 'prune'})
+    parser.add_argument('--overwrite',    default=False, action='store_true', help='Overwrite the existing master file')
     args = parser.parse_args()
 
     master = args.master
     child = args.child
-    operation = args.operation
     match_column = args.match_column
+    operation = args.operation
+    overwrite = args.overwrite
 
     try:
         manager = SheetManager(master_file=master, child_file=child, match_column=match_column)
 
         if operation == 'merge':
-            manager.merge()
+            updated_data = manager.merge()
         elif operation == 'prune':
-            manager.prune()
+            updated_data = manager.prune()
         else:
-            print('Operation \'{}\' is not supported')
+            parser.print_help()
+            raise SheetManagerException('Operation \'{}\' is not supported')
+
+        manager.save_new_csv(path_prefix=manager.master_path, file_contents=updated_data, overwrite=overwrite)
 
     except SheetManagerException as error:
         print('Sheet management failed. Error: {}'.format(error))
