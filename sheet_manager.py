@@ -1,7 +1,7 @@
 import traceback
 from argparse import ArgumentParser
-from os import path
 from datetime import datetime
+from os import path
 
 import pandas
 
@@ -26,8 +26,13 @@ class SheetManager(object):
             else:
                 raise SheetManagerException('{} is not a file.'.format(f))
 
+        # Ingest the data
         self.master = pandas.read_csv(self.master_path)
         self.child = pandas.read_csv(self.child_path)
+
+        # Normalize the values in the match_column
+        for df in (self.master, self.child):
+            self.__normalize_uid(df)
 
     def merge(self):
         """ Merge child into master using match_column """
@@ -54,10 +59,12 @@ class SheetManager(object):
     def prune(self):
         raise SheetManagerException('prune method not yet implemented')
 
-    @staticmethod
-    def __normalize_uid(uid):
+    def __normalize_uid(self, data_frame):
         """ Normalize the discrepancies in UIDs from different source sheets for easier comparison """
-        return uid.replace('-', ' ')
+        for index, row in data_frame.iterrows():
+            uid_in = data_frame.loc[index, self.match_column]
+            uid_out = uid_in.replace('-', ' ')
+            data_frame.loc[index, self.match_column] = uid_out
 
     @staticmethod
     def __validate_uniqueness(some_list):
