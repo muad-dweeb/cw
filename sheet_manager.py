@@ -1,3 +1,4 @@
+import traceback
 from argparse import ArgumentParser
 from os import path
 from datetime import datetime
@@ -31,21 +32,23 @@ class SheetManager(object):
     def merge(self):
         """ Merge child into master using match_column """
 
-        # with open(self.master_file) as mf:
-        #     reader = csv.reader(mf, delimiter=',')
-        #     line_count = 0
-        #     for row in reader:
-        #         if line_count == 0:
-        #             # TODO: untested
-        #             print('Master headers: {}'.format(', '.join(row)))
-        #             # TODO: make sure row is an iterable
-        #             if self.match_column not in row:
-        #                 raise SheetManagerException('Expected column name \'{}\' not found.')'
-        #         else:
-        #             WAIT. hold up...
+        dup_col_suffix = '__y'
 
-        # TODO: Will need to define a column-mapping config so columns don't duplicate
-        merged = self.master.merge(self.child, how='outer', on=self.match_column, suffixes=('', '__y'))
+        merged = self.master.merge(self.child, how='outer', on=self.match_column, suffixes=('', dup_col_suffix))
+
+        # Clean up duplicate columns
+        for index, row in merged.iterrows():
+            for col in merged.columns:
+                if not col.endswith(dup_col_suffix):
+                    continue
+                x = merged.loc[index, col.strip(dup_col_suffix)]
+                y = merged.loc[index, col]
+                # SKip NaN values
+                if type(x) != str or type(y) != str:
+                    continue
+                if x.lower() == y.lower():
+                    merged.loc[index, col] = pandas.np.nan
+
         return merged
 
     def prune(self):
@@ -113,3 +116,4 @@ if __name__ == '__main__':
 
     except Exception as error:
         print('Sheet management failed. Error: {}'.format(error))
+        traceback.print_exc()
