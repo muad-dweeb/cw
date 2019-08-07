@@ -45,7 +45,7 @@ class SheetManager(object):
         #             WAIT. hold up...
 
         # TODO: Will need to define a column-mapping config so columns don't duplicate
-        merged = self.master.merge(self.child, on=self.match_column)
+        merged = self.master.merge(self.child, how='outer', on=self.match_column, suffixes=('', '__y'))
         return merged
 
     def prune(self):
