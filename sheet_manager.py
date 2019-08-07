@@ -109,6 +109,7 @@ if __name__ == '__main__':
 
         new_file_path = manager.create_new_filename(path_prefix=manager.master_path, overwrite_existing=overwrite)
         updated_data.to_csv(new_file_path)
+        print('Updated data saved to: {}'.format(new_file_path))
 
     except Exception as error:
         print('Sheet management failed. Error: {}'.format(error))
