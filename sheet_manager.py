@@ -10,7 +10,7 @@ from os import path
 from sheet_config import SheetConfig, SheetConfigException
 
 
-SEP = '-' * 40
+SEP = '-' * 70
 
 
 class SheetManagerException(BaseException):
@@ -25,7 +25,7 @@ class SheetManager(object):
         self._master_config = master_config
         self._child_config = child_config
 
-        out_file = self._create_new_filename(path_prefix=self._master_config.location,
+        out_file = self._create_new_filename(in_path=self._master_config.location,
                                              overwrite_existing=overwrite)
         self.out_file = path.expanduser(out_file)
 
@@ -118,21 +118,25 @@ class SheetManager(object):
         return uid.replace('-', '').replace(' ', '')
 
     @staticmethod
-    def _create_new_filename(path_prefix, overwrite_existing=False):
+    def _create_new_filename(in_path, overwrite_existing=False):
         """ Save to a new CSV file with an incrementing filename unless overwrite is requested """
         # YYYYMMDD
         now_string = datetime.now().strftime('%Y%m%d')
+
+        full_path = path.expanduser(in_path)
+
         # Remove any file extension from the path
-        path_prefix = path.splitext(path_prefix)[0]
-        full_path = '{}_{}.csv'.format(path_prefix, now_string)
+        full_path = path.splitext(full_path)[0]
+
+        out_path = '{}_{}.csv'.format(full_path, now_string)
 
         if not overwrite_existing:
             increment = 1
-            while path.isfile(full_path):
-                full_path = '{}_{}_{}.csv'.format(path_prefix, now_string, increment)
+            while path.isfile(out_path):
+                out_path = '{}_{}_{}.csv'.format(full_path, now_string, increment)
                 increment += 1
 
-        return full_path
+        return out_path
 
 
 # class SheetManagerPandas(object):
