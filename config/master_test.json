@@ -1,0 +1,5 @@
+{
+	"location": "~/muad-dweeb/cw/test_data/master.csv",
+	"id_column": "uid",
+	"id_char_count": 7
+}

@@ -1,0 +1,5 @@
+{
+	"location": "~/muad-dweeb/cw/test_data/child.csv",
+	"id_column": "unique_identifier",
+	"id_char_count": "mixed"
+}
