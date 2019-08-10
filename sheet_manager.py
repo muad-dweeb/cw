@@ -7,7 +7,10 @@ from os import path
 
 # import pandas
 
-from sheet_config import SheetConfig
+from sheet_config import SheetConfig, SheetConfigException
+
+
+SEP = '-' * 40
 
 
 class SheetManagerException(BaseException):
@@ -44,10 +47,25 @@ class SheetManager(object):
         """ Merge child into master using match_column """
 
         remaining_child_rows = list()
+        unwanted_child_ids = list()
 
         # Hold all children in memory
+        total_children = 0
         for row in self.child_reader:
-            remaining_child_rows.append(row)
+            total_children += 1
+
+            # Only add child if its ID len matches the master config length!
+            child_id = row[self._child_config.id_column]
+            if len(self._normalize_uid(child_id)) == self._master_config.id_char_count:
+                remaining_child_rows.append(row)
+            else:
+                unwanted_child_ids.append(child_id)
+
+        print(SEP)
+        print('Total child rows processed: {}'.format(total_children))
+        print('Child rows with proper ID lengths: {}'.format(len(remaining_child_rows)))
+        print('Child rows with incorrect ID lengths: {}'.format(len(unwanted_child_ids)))
+        print(SEP)
 
         output_fieldnames = self.master_reader.fieldnames + self.child_reader.fieldnames
         with open(self.out_file, 'w') as out:
@@ -68,7 +86,7 @@ class SheetManager(object):
 
                     # Do the IDs match after normalization?
                     if self._normalize_uid(child_id) == self._normalize_uid(master_id):
-                        print('ID match: {}'.format(master_id))
+                        print('    ID match: {}'.format(master_id))
 
                         # Add all children values to out_dict
                         for c_key, c_value in c_row.iteritems():
@@ -84,6 +102,12 @@ class SheetManager(object):
             print('Appending {} unmatched child rows to the end of the file...'.format(len(remaining_child_rows)))
             for o_row in remaining_child_rows:
                 output_writer.writerow(o_row)
+
+        # Display unmatched child IDs for verification
+        print(SEP)
+        print('Child rows skipped due to ID length mismatch:')
+        for c_id in unwanted_child_ids:
+            print('    {}'.format(c_id))
 
     def prune(self):
         raise SheetManagerException('prune method not yet implemented')
@@ -216,12 +240,19 @@ if __name__ == '__main__':
     operation = args.operation
     overwrite = args.overwrite
 
-    try:
+    master_config = None
+    child_config = None
 
+    try:
         # Create config objects
         master_config = SheetConfig(master_config_path)
         child_config = SheetConfig(child_config_path)
 
+    except SheetConfigException as e:
+        print('Failed to load configurations. Error: {}'.format(e))
+        traceback.print_exc()
+
+    try:
         # Create sheet manager object
         manager = SheetManager(master_config=master_config, child_config=child_config)
 
