@@ -13,16 +13,6 @@ class SheetConfig(object):
         if not os.path.isfile(self.config_file):
             raise SheetConfigException('File does not exist: {}'.format(self.config_file))
 
-        self.location = None
-        self.id_column = None
-        self.id_char_count = None
-
-        self._get_config()
-
-        # TODO: Validate values here?
-
-    def _get_config(self):
-
         required_keys = {'location', 'id_column', 'id_char_count'}
 
         try:
@@ -40,3 +30,10 @@ class SheetConfig(object):
         self.location = config_dict['location']
         self.id_column = config_dict['id_column']
         self.id_char_count = config_dict['id_char_count']
+
+        # Validate id char count
+        if self.id_char_count != 'mixed' and type(self.id_char_count) != int:
+            try:
+                self.id_char_count = int(self.id_char_count)
+            except ValueError:
+                raise SheetConfigException('Unable to coerce id_char_count \'{}\' to an integer.')
