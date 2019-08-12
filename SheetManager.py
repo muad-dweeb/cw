@@ -13,7 +13,9 @@ class SheetManagerException(BaseException):
 
 class SheetManager(object):
 
-    def __init__(self, master_config, child_config, overwrite=False):
+    def __init__(self, master_config, child_config, overwrite=False, verbose=False):
+
+        self.verbose = verbose
 
         # These are SheetConfig objects
         self._master_config = master_config
@@ -42,6 +44,7 @@ class SheetManager(object):
 
         remaining_child_rows = list()
         unwanted_child_ids = list()
+        aligned_count = 0
 
         # Hold all children in memory
         total_children = 0
@@ -82,7 +85,9 @@ class SheetManager(object):
                     n_child_id = self._normalize_uid(uid=child_id)
                     n_master_id = self._normalize_uid(uid=master_id, actual_id_len=self._master_config.id_char_count)
                     if n_child_id == n_master_id:
-                        print('    ID match: {}'.format(master_id))
+                        aligned_count += 1
+                        if self.verbose:
+                            print('    ID match: {}'.format(master_id))
 
                         # Add all children values to out_dict
                         for c_key, c_value in c_row.iteritems():
@@ -94,16 +99,19 @@ class SheetManager(object):
                 # Write completed out_dict to the output CSV file
                 output_writer.writerow(out_dict)
 
+            print('Rows aligned by {}: {}'.format(self._master_config.id_column, aligned_count))
+
             # Don't forget the orphan children!
-            print('Appending {} unmatched child rows to the end of the file...'.format(len(remaining_child_rows)))
+            print('Unmatched child rows appended to the end of the file: {}'.format(len(remaining_child_rows)))
             for o_row in remaining_child_rows:
                 output_writer.writerow(o_row)
 
         # Display unmatched child IDs for verification
-        print(SEP)
-        print('Child rows skipped due to ID length mismatch:')
-        for c_id in unwanted_child_ids:
-            print('    {}'.format(c_id))
+        if self.verbose:
+            print(SEP)
+            print('Child rows skipped due to ID length mismatch:')
+            for c_id in unwanted_child_ids:
+                print('    {}'.format(c_id))
 
     def prune(self):
         raise SheetManagerException('prune method not yet implemented')
