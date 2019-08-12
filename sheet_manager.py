@@ -63,8 +63,8 @@ class SheetManager(object):
 
         print(SEP)
         print('Total child rows processed: {}'.format(total_children))
-        print('Child rows with proper ID lengths: {}'.format(len(remaining_child_rows)))
-        print('Child rows with incorrect ID lengths: {}'.format(len(unwanted_child_ids)))
+        print('    Child rows with proper ID lengths: {}'.format(len(remaining_child_rows)))
+        print('    Child rows with incorrect ID lengths: {}'.format(len(unwanted_child_ids)))
         print(SEP)
 
         output_fieldnames = self.master_reader.fieldnames + self.child_reader.fieldnames
@@ -84,6 +84,7 @@ class SheetManager(object):
                 for c_row in remaining_child_rows:
                     child_id = c_row[self._child_config.id_column]
 
+                    # TODO: try filling in leading zeros up-to the master id char count and matching!
                     # Do the IDs match after normalization?
                     if self._normalize_uid(child_id) == self._normalize_uid(master_id):
                         print('    ID match: {}'.format(master_id))
