@@ -84,9 +84,10 @@ class SheetManager(object):
                 for c_row in remaining_child_rows:
                     child_id = c_row[self._child_config.id_column]
 
-                    # TODO: try filling in leading zeros up-to the master id char count and matching!
                     # Do the IDs match after normalization?
-                    if self._normalize_uid(child_id) == self._normalize_uid(master_id):
+                    n_child_id = self._normalize_uid(uid=child_id)
+                    n_master_id = self._normalize_uid(uid=master_id, actual_id_len=self._master_config.id_char_count)
+                    if n_child_id == n_master_id:
                         print('    ID match: {}'.format(master_id))
 
                         # Add all children values to out_dict
@@ -114,9 +115,12 @@ class SheetManager(object):
         raise SheetManagerException('prune method not yet implemented')
 
     @staticmethod
-    def _normalize_uid(uid):
-        """ Delete hyphens and spaces from input string """
-        return uid.replace('-', '').replace(' ', '')
+    def _normalize_uid(uid, actual_id_len=None):
+        """ Delete hyphens and spaces from input string and add missing leading zeros """
+        uid = uid.replace('-', '').replace(' ', '')
+        while actual_id_len is not None and len(uid) < actual_id_len:
+            uid = '0' + uid
+        return uid
 
     @staticmethod
     def _create_new_filename(in_path, overwrite_existing=False):
