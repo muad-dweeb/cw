@@ -7,15 +7,15 @@ from SheetManager import SheetManager, SheetManagerException
 
 if __name__ == '__main__':
     parser = ArgumentParser()
-    parser.add_argument('--master-config', required=True, help='Path to the master sheet')
-    parser.add_argument('--child-config',  required=True, help='Path to sheet to use for operating on the master sheet')
+    parser.add_argument('--master-config', required=True, help='Master config name')
+    parser.add_argument('--child-config',  required=True, help='Child config name')
     parser.add_argument('--operation',     required=True, help='Operation to perform', choices={'merge', 'prune'})
     parser.add_argument('--overwrite',     default=False, action='store_true', help='Overwrite the existing master file')
-    parser.add_argument('--verbose', 'v',  default=False, action='store_true', help='Display more detailed information')
+    parser.add_argument('--verbose', '-v', default=False, action='store_true', help='Display more detailed information')
     args = parser.parse_args()
 
-    master_config_path = args.master_config
-    child_config_path = args.child_config
+    master_config_name = args.master_config
+    child_config_name = args.child_config
     operation = args.operation
     overwrite = args.overwrite
     verbose = args.verbose
@@ -27,8 +27,8 @@ if __name__ == '__main__':
 
     try:
         # Create config objects
-        master_config = SheetConfig(master_config_path)
-        child_config = SheetConfig(child_config_path)
+        master_config = SheetConfig(master_config_name)
+        child_config = SheetConfig(child_config_name)
 
     except SheetConfigException as e:
         print('Failed to load configurations. Error: {}'.format(e))

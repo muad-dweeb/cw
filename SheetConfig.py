@@ -7,11 +7,17 @@ class SheetConfigException(BaseException):
 
 
 class SheetConfig(object):
-    def __init__(self, file_path):
+    def __init__(self, config_name):
 
-        self.config_file = os.path.expanduser(file_path)
+        # Assemble the config file path
+        config_name = os.path.splitext(config_name)[0]
+        config_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'config')
+        self.config_file = os.path.join(config_dir, config_name) + '.json'
+
         if not os.path.isfile(self.config_file):
             raise SheetConfigException('File does not exist: {}'.format(self.config_file))
+        else:
+            print('Loading config: {}'.format(self.config_file))
 
         required_keys = {'location', 'id_column', 'id_char_count'}
 
