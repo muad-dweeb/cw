@@ -2,3 +2,4 @@
 *.pyc
 test_data
 data
+config/*creds.json

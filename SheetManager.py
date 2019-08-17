@@ -4,11 +4,9 @@ from copy import deepcopy
 from datetime import datetime
 from os import path
 
+from exceptions import SheetManagerException
+
 SEP = '-' * 70
-
-
-class SheetManagerException(BaseException):
-    pass
 
 
 class SheetManager(object):

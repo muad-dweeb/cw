@@ -1,9 +1,7 @@
 import json
 import os
 
-
-class SheetConfigException(BaseException):
-    pass
+from exceptions import SheetConfigException
 
 
 class SheetConfig(object):
