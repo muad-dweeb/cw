@@ -102,6 +102,50 @@ class ICScraper(object):
         print('{} matching results found.'.format(len(matches)))
         return matches
 
+    def get_info(self, search_result):
+        """
+        Given a search, open their reports and return the relevant information
+        :param search_result: WebElement
+        :return:
+        """
+
+        report_timeout = 180
+        main_report = None
+        contact_info = {'phone_numbers': dict(), 'email_address': list()}
+
+        # Big green button
+        open_report = search_result.find_element_by_class_name('view-report')
+        open_report.click()
+
+        # Verify report generation success
+        countdown_begin = time.time()
+        success = False
+        # TODO: dismiss tutorial overlay if it occurs
+        while not success:
+            try:
+                main_report = self._driver.find_element_by_id('main-report')
+                success = True
+            except NoSuchElementException:
+                time.sleep(2)
+            if time.time() - countdown_begin > report_timeout:
+                raise ScraperException('Report failed to generate in {} seconds'.format(report_timeout))
+
+        print('Report load successful')
+
+        phone_rows = main_report.find_elements_by_class_name('phone-row')
+        for row in phone_rows:
+            phone_number = row.find_element_by_class_name('usage-phone-number').text
+            phone_type = row.find_element_by_class_name('usage-line-type').text
+            contact_info['phone_numbers'][phone_number] = phone_type
+
+        email_rows = main_report.find_elements_by_class_name('email-usage')
+        for row in email_rows:
+            remove_button = row.find_element_by_class_name('remove')
+            email_address = remove_button.get_attribute('data-source')
+            contact_info['email_addresses'].append(email_address)
+
+        return contact_info
+
     def close(self):
         self._driver.close()
         print('Chrome killed at {}'.format(datetime.now()))
@@ -115,6 +159,11 @@ if __name__ == '__main__':
         scraper.login()
 
         matches = scraper.find('andrew', 'galloway', 'seattle', 'wa')
+
+        # TESTING
+        first_match = matches[0]
+        contact_info = scraper.get_info(first_match)
+        # TODO: figure out how to loop all matches. Probably need to rerun the search and checkpoint the matches?
 
     except ScraperException as e:
         print('Scrape failed. Error: {}'.format(e))
