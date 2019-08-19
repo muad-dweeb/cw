@@ -5,7 +5,7 @@ from datetime import datetime
 
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
-from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import NoSuchElementException, NoSuchWindowException
 
 from exceptions import ScraperException
 
@@ -70,8 +70,37 @@ class ICScraper(object):
         print('Login successful')
 
     def find(self, first, last, city, state):
+        matches = list()
+
         search_url = self.root + '/search/person/?first={}&last={}&city={}&state={}'.format(first, last, city, state)
         self._driver.get(search_url)
+
+        results_list = self._driver.find_elements_by_class_name('result')
+
+        for result in results_list:
+            found_first = result.get_attribute('data-first-name')
+            found_last = result.get_attribute('data-last-name')
+            found_city = result.get_attribute('data-location')
+
+            # Basic validation against canonical search params
+            if found_first.lower() != first.lower() or \
+                    found_last.lower() != last.lower() or \
+                    found_city.lower() != city.lower():
+                continue
+
+            # Secondary validation to make sure the most recent location matches the input city
+            locations_list = result.find_elements_by_class_name('person-location')
+            if locations_list[0].split(',')[0].lower() != city.lower():
+                continue
+
+            # Only keep 100% input matches
+            matches.append(result)
+
+        # Free memory
+        del results_list
+
+        print('{} matching results found.'.format(len(matches)))
+        return matches
 
     def close(self):
         self._driver.close()
@@ -84,7 +113,14 @@ if __name__ == '__main__':
         scraper = ICScraper('~/muad-dweeb/cw/config/ic_creds.json')  # TODO: remove hardcoded path
         # TODO: Maybe login should just be a fully manual process... no creds file involved?
         scraper.login()
+
+        matches = scraper.find('andrew', 'galloway', 'seattle', 'wa')
+
     except ScraperException as e:
         print('Scrape failed. Error: {}'.format(e))
+
+    except NoSuchWindowException:
+        print('Window was closed prematurely')
+
     if scraper:
         scraper.close()
