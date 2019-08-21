@@ -41,7 +41,8 @@ class ICScraper(object):
         return config_dict
 
     def login(self):
-        captcha_timeout = 120
+        # This needs to be a fair bit of time because these captchas are FUCKING IMPOSSIBLE TO SOLVE
+        captcha_timeout = 360
         login_url = self.root + '/login'
         self._driver.get(login_url)
 
@@ -69,7 +70,7 @@ class ICScraper(object):
 
         print('Login successful')
 
-    def find(self, first, last, city, state):
+    def find(self, first, last, city, state, verbose=False):
         matches = list()
 
         search_url = self.root + '/search/person/?first={}&last={}&city={}&state={}'.format(first, last, city, state)
@@ -80,7 +81,9 @@ class ICScraper(object):
         for result in results_list:
             found_first = result.get_attribute('data-first-name')
             found_last = result.get_attribute('data-last-name')
+            found_full = result.get_attribute('data-full-name')
             found_city = result.get_attribute('data-location')
+            found_age = result.get_attribute('data-age')
 
             # Basic validation against canonical search params
             if found_first.lower() != first.lower() or \
@@ -90,8 +93,11 @@ class ICScraper(object):
 
             # Secondary validation to make sure the most recent location matches the input city
             locations_list = result.find_elements_by_class_name('person-location')
-            if locations_list[0].split(',')[0].lower() != city.lower():
+            if locations_list[0].text.split(',')[0].lower() != city.lower():
                 continue
+
+            if verbose:
+                print('Result: {}, Age: {}, City: {}'.format(found_full, found_age, found_city))
 
             # Only keep 100% input matches
             matches.append(result)
@@ -99,19 +105,18 @@ class ICScraper(object):
         # Free memory
         del results_list
 
-        print('{} matching results found.'.format(len(matches)))
         return matches
 
     def get_info(self, search_result):
         """
-        Given a search, open their reports and return the relevant information
+        Given a search, open its report and return the relevant information
         :param search_result: WebElement
-        :return:
+        :return: dict
         """
 
         report_timeout = 180
         main_report = None
-        contact_info = {'phone_numbers': dict(), 'email_address': list()}
+        contact_dict = {'phone_numbers': dict(), 'email_addresses': list()}
 
         # Big green button
         open_report = search_result.find_element_by_class_name('view-report')
@@ -136,15 +141,45 @@ class ICScraper(object):
         for row in phone_rows:
             phone_number = row.find_element_by_class_name('usage-phone-number').text
             phone_type = row.find_element_by_class_name('usage-line-type').text
-            contact_info['phone_numbers'][phone_number] = phone_type
+            contact_dict['phone_numbers'][phone_number] = phone_type
 
         email_rows = main_report.find_elements_by_class_name('email-usage')
         for row in email_rows:
             remove_button = row.find_element_by_class_name('remove')
             email_address = remove_button.get_attribute('data-source')
-            contact_info['email_addresses'].append(email_address)
+            contact_dict['email_addresses'].append(email_address)
 
-        return contact_info
+        return contact_dict
+
+    def get_all_info(self, first, last, city, state):
+        """
+        Wrapper for find() and get_info() if all results are desirable. De-duping built-in.
+        :return: dict
+        """
+        full_info = {'phone_numbers': dict(), 'email_addresses': set()}
+        scrape_index = 0
+
+        search_results = self.find(first=first, last=last, city=city, state=state, verbose=True)
+        print('{} matching results found.'.format(len(search_results)))
+
+        # NOTE: New elements are generated each time the search page is loaded, rendering all previous elements stale
+        while scrape_index < len(search_results):
+
+            # Opens Report and generates info dict
+            single_info = self.get_info(search_result=search_results[scrape_index])
+
+            for key, value in single_info['phone_numbers'].items():
+                full_info['phone_numbers'][key] = value
+
+            for value in single_info['email_addresses']:
+                full_info['email_addresses'].add(value)
+
+            # Navigate back to search results page
+            search_results = self.find(first=first, last=last, city=city, state=state)
+
+            scrape_index += 1
+
+        return full_info
 
     def close(self):
         self._driver.close()
@@ -158,12 +193,9 @@ if __name__ == '__main__':
         # TODO: Maybe login should just be a fully manual process... no creds file involved?
         scraper.login()
 
-        matches = scraper.find('andrew', 'galloway', 'seattle', 'wa')
-
         # TESTING
-        first_match = matches[0]
-        contact_info = scraper.get_info(first_match)
-        # TODO: figure out how to loop all matches. Probably need to rerun the search and checkpoint the matches?
+        contact_info = scraper.get_all_info('andrew', 'galloway', 'seattle', 'wa')
+        print(contact_info)
 
     except ScraperException as e:
         print('Scrape failed. Error: {}'.format(e))
