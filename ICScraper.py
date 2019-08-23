@@ -12,10 +12,8 @@ from exceptions import ScraperException
 
 class ICScraper(object):
 
-    def __init__(self, config_path):
+    def __init__(self):
         self.root = 'https://www.instantcheckmate.com/dashboard'
-        self._config = self._get_config(config_path=config_path)
-
         self._driver = webdriver.Chrome()
         print('Chrome spawned at {}'.format(datetime.now()))
 
@@ -40,17 +38,44 @@ class ICScraper(object):
         print('Config successfully loaded from: {}'.format(config_path))
         return config_dict
 
-    def login(self):
+    def manual_login(self):
+        """
+        Just loads the login screen. It's up to the user to enter creds and click the stupid images
+        :return:
+        """
+        login_url = self.root + '/login'
+        self._driver.get(login_url)
+
+        # Verify login success
+        success = False
+        while not success:
+            try:
+                self._driver.find_element_by_id('report-history')
+                success = True
+            except NoSuchElementException:
+                time.sleep(2)
+
+        print('Login successful')
+        return True
+
+    def auto_login(self, config_path):
+        """
+        Without Re-Captcha circumvention, this method is not all that useful.
+        It works, but all it really does is load the login page, input the creds,
+          and then the user still needs to solve the bullshit to continue.
+        :return:
+        """
         # This needs to be a fair bit of time because these captchas are FUCKING IMPOSSIBLE TO SOLVE
         captcha_timeout = 360
+        config = self._get_config(config_path=config_path)
         login_url = self.root + '/login'
         self._driver.get(login_url)
 
         email_input = self._driver.find_element_by_css_selector("input[type='email']")
         pass_input = self._driver.find_element_by_css_selector("input[type='password']")
 
-        email_input.send_keys(self._config['email'])
-        pass_input.send_keys(self._config['pass'])
+        email_input.send_keys(config['email'])
+        pass_input.send_keys(config['pass'])
         pass_input.send_keys(Keys.RETURN)
 
         # MANUAL CAPTCHA RESOLUTION REQUIRED

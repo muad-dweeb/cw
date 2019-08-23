@@ -4,11 +4,11 @@ from ICScraper import ICScraper
 from exceptions import ScraperException
 
 if __name__ == '__main__':
+
     scraper = None
     try:
-        scraper = ICScraper('~/muad-dweeb/cw/config/ic_creds.json')  # TODO: remove hardcoded path
-        # TODO: Maybe login should just be a fully manual process... no creds file involved?
-        scraper.login()
+        scraper = ICScraper()
+        scraper.manual_login()
 
         # TESTING
         contact_info = scraper.get_all_info('andrew', 'galloway', 'seattle', 'wa')
