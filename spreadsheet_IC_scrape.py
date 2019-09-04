@@ -1,6 +1,7 @@
 import sys
 from argparse import ArgumentParser
-from csv import DictReader
+from copy import deepcopy
+from csv import DictReader, DictWriter
 from os import path
 from re import compile
 
@@ -8,6 +9,7 @@ from selenium.common.exceptions import NoSuchWindowException
 
 from ICScraper import ICScraper
 from SheetConfig import SheetConfig
+from SheetManager import SheetManager
 from exceptions import ScraperException, SheetConfigException
 
 
@@ -79,6 +81,8 @@ def get_columns(dict_reader, config_dict):
             while len(return_dict[location_key]) < len(return_dict['first_names']):
                 return_dict[location_key].append(return_dict[location_key][0])
 
+    return_dict['count'] = len(return_dict['first_names'])
+
     return return_dict
 
 
@@ -86,39 +90,102 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('--config', required=True, help='Configuration name')
     parser.add_argument('--limit-rows', type=int, help='Number of Sheet rows to limit scraping to')
+    parser.add_argument('--verbose', default=False, help='Increase print verbosity', action='store_true')
     args = parser.parse_args()
 
     config = None
     scraper = None
 
-    # Load Configuration and Sheet
+    verbose = args.verbose
+
+    # Load required files
     try:
+        # Config
         config = SheetConfig(args.config)
         validate_config_dict(config.dict)
-        sheet_reader = DictReader(open(path.expanduser(config.location)))
+
+        # Input Sheet
+        in_file = path.expanduser(config.location)
+        print('Reading from:   {}'.format(in_file))
+        sheet_reader = DictReader(open(path.expanduser(in_file)))
         column_dict = get_columns(sheet_reader, config.dict)
+
+        # Output Sheet
+        out_file = SheetManager.create_new_filename(in_path=in_file, overwrite_existing=True)
 
     except SheetConfigException as e:
         print('Failed to load sheet config \'{}\'. Error: {}'.format(args.config, e))
         sys.exit(1)
 
     # TESTING
-    print(column_dict)
+    # print(column_dict)
 
-    # Scrape
+    # DO THE THING!
     try:
-        scraper = ICScraper()
-        scraper.manual_login()
+        # TODO: Uncomment!
+        # scraper = ICScraper()
+        # scraper.manual_login()
 
         # TESTING
-        contact_info = scraper.get_all_info('andrew', 'galloway', 'seattle', 'wa')
-        print(contact_info)
+        # contact_info = scraper.get_all_info('andrew', 'galloway', 'seattle', 'wa')
+        # print(contact_info)
+        with open(out_file, 'w') as out:
+            print('Writing to:     {}'.format(out_file))
+
+            last_search = None
+            current_search = {'first_name': None, 'last_name': None, 'city': None, 'state': None}
+
+            output_columns = sheet_reader.fieldnames
+            if 'scraped' not in output_columns:
+                output_columns = output_columns.append('scraped')
+            sheet_writer = DictWriter(out, fieldnames=output_columns)
+
+            # Iterate through rows in the spreadsheet
+            for row in sheet_reader:
+
+                index = 0
+
+                # Iterate through groups of columns
+                while index < column_dict['count']:
+                    first_name = row[column_dict['first_names'][index]].strip().upper()
+                    last_name = row[column_dict['last_names'][index]].strip().upper()
+                    city = row[column_dict['cities'][index]].strip().upper()
+                    state = row[column_dict['states'][index]].strip().upper()
+
+                    # Skip empty column groups
+                    if first_name not in (None, '') and last_name not in (None, ''):
+
+                        current_search['first_name'] = first_name
+                        current_search['last_name'] = last_name
+                        current_search['city'] = city
+                        current_search['state'] = state
+
+                        if current_search != last_search:
+                            if verbose:
+                                print('\tfirst: {}, last: {}, city: {}, state: {}'.format(first_name, last_name,
+                                                                                          city, state))
+
+                            # TODO: use the current search params to scrape contact info
+                            last_search = deepcopy(current_search)
+
+                        else:
+                            if verbose:
+                                print('\t  Skipping duplicate search...')
+
+                            # TODO: Reuse the last scraped contact info
+
+                        # TODO: write contact info to row
+
+                    index += 1
 
     except ScraperException as e:
         print('Scrape failed. Error: {}'.format(e))
 
     except NoSuchWindowException:
         print('Window was closed prematurely')
+
+    except Exception as e:
+        print('Unhandled exception: {}'.format(e))
 
     if scraper:
         scraper.close()
