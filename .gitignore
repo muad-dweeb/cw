@@ -3,3 +3,4 @@
 test_data
 data
 config/*creds.json
+.DS_Store
