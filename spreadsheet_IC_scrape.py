@@ -97,6 +97,7 @@ if __name__ == '__main__':
     scraper = None
 
     verbose = args.verbose
+    limit_rows = args.limit_rows
 
     # Load required files
     try:
@@ -141,11 +142,13 @@ if __name__ == '__main__':
             sheet_writer = DictWriter(out, fieldnames=output_columns)
 
             # Iterate through rows in the spreadsheet
+            row_count = 0
             for row in sheet_reader:
 
-                index = 0
+                row_count += 1
 
                 # Iterate through groups of columns
+                index = 0
                 while index < column_dict['count']:
                     first_name = row[column_dict['first_names'][index]].strip().upper()
                     last_name = row[column_dict['last_names'][index]].strip().upper()
@@ -177,6 +180,9 @@ if __name__ == '__main__':
                         # TODO: write contact info to row
 
                     index += 1
+
+                if row_count >= limit_rows:
+                    break
 
     except ScraperException as e:
         print('Scrape failed. Error: {}'.format(e))
