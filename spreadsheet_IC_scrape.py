@@ -1,4 +1,5 @@
 import sys
+import traceback
 from argparse import ArgumentParser
 from copy import deepcopy
 from csv import DictReader, DictWriter
@@ -11,6 +12,9 @@ from ICScraper import ICScraper
 from SheetConfig import SheetConfig
 from SheetManager import SheetManager
 from exceptions import ScraperException, SheetConfigException
+
+
+SEP = '-' * 60
 
 
 def validate_config_dict(config_dict):
@@ -114,36 +118,66 @@ if __name__ == '__main__':
         # Output Sheet
         out_file = SheetManager.create_new_filename(in_path=in_file, overwrite_existing=True)
 
+        # TODO: User prompt if out_file already exists; warn of overwrite!
+        #  Provide instructions to either rename the files or update the config json
+
     except SheetConfigException as e:
         print('Failed to load sheet config \'{}\'. Error: {}'.format(args.config, e))
         sys.exit(1)
 
-    # TESTING
-    # print(column_dict)
-
     # DO THE THING!
     try:
-        # TODO: Uncomment!
-        # scraper = ICScraper()
-        # scraper.manual_login()
+        scraper = ICScraper()
+        scraper.manual_login()
 
-        # TESTING
-        # contact_info = scraper.get_all_info('andrew', 'galloway', 'seattle', 'wa')
-        # print(contact_info)
         with open(out_file, 'w') as out:
             print('Writing to:     {}'.format(out_file))
+
+            print(SEP)
 
             last_search = None
             current_search = {'first_name': None, 'last_name': None, 'city': None, 'state': None}
 
+            # Output sheet will have at least the input sheet's columns
             output_columns = sheet_reader.fieldnames
+
+            contact_columns = {'phone': list(), 'email': list()}
+
+            index = 0
+            while index < column_dict['count']:
+
+                column_prefix = path.commonprefix([column_dict['first_names'][index], column_dict['last_names'][index]])
+                phone_column = '{} Phone'.format(column_prefix)
+                email_column = '{} Email'.format(column_prefix)
+
+                contact_columns['phone'].append(phone_column)
+                contact_columns['email'].append(email_column)
+
+                # Add contact columns to header as needed
+                for contact_column in (phone_column, email_column):
+                    if contact_column not in output_columns:
+                        output_columns.append(contact_column)
+
+                index += 1
+
+            # 'scraped' column is a Boolean that simply confirms that a given row was previously auto-scraped
             if 'scraped' not in output_columns:
-                output_columns = output_columns.append('scraped')
+                output_columns.append('scraped')
+
+            # Initialize output sheet with header
             sheet_writer = DictWriter(out, fieldnames=output_columns)
+            sheet_writer.writeheader()
 
             # Iterate through rows in the spreadsheet
             row_count = 0
             for row in sheet_reader:
+
+                # Skip already-scraped rows
+                if 'scraped' in row.keys() and row['scraped'] is True:
+                    continue
+
+                output_row = deepcopy(row)
+                grouped_contact_dict = dict()
 
                 row_count += 1
 
@@ -155,6 +189,8 @@ if __name__ == '__main__':
                     city = row[column_dict['cities'][index]].strip().upper()
                     state = row[column_dict['states'][index]].strip().upper()
 
+                    grouped_contact_dict[index] = {'phone_numbers': list(), 'email_addresses': list()}
+
                     # Skip empty column groups
                     if first_name not in (None, '') and last_name not in (None, ''):
 
@@ -165,21 +201,43 @@ if __name__ == '__main__':
 
                         if current_search != last_search:
                             if verbose:
-                                print('\tfirst: {}, last: {}, city: {}, state: {}'.format(first_name, last_name,
-                                                                                          city, state))
+                                print('Search: {} () , () ()'.format(first_name, last_name, city, state))
 
-                            # TODO: use the current search params to scrape contact info
+                            # Use the current search params to scrape contact info
+                            contact_info = scraper.get_all_info(first=first_name, last=last_name, city=city, state=state)
+
                             last_search = deepcopy(current_search)
 
                         else:
                             if verbose:
                                 print('\t  Skipping duplicate search...')
 
-                            # TODO: Reuse the last scraped contact info
+                            # Reuse the last scraped contact info
+                            contact_info = scraper.last_contact_info
 
-                        # TODO: write contact info to row
+                        grouped_contact_dict[index] = contact_info
 
                     index += 1
+
+                for contact_index, contact_info in grouped_contact_dict.items():
+                    phone_numbers = list(contact_info['phone_numbers'])
+                    email_addresses = list(contact_info['email_addresses'])
+
+                    # Write contact info to output row
+                    if len(phone_numbers) > 0:
+                        output_row[contact_columns['phone'][contact_index]] = ','.join(phone_numbers)
+                    if len(email_addresses) > 0:
+                        output_row[contact_columns['email'][contact_index]] = ','.join(email_addresses)
+
+                    # TODO: split the phone numbers and email addresses across multiple rows (VERY DIFFICULT)
+
+                # Mark row as scraped to prevent future re-scrape
+                output_row['scraped'] = True
+
+                # Write out the completed row
+                sheet_writer.writerow(output_row)
+
+                print(SEP)
 
                 if row_count >= limit_rows:
                     break
@@ -192,6 +250,7 @@ if __name__ == '__main__':
 
     except Exception as e:
         print('Unhandled exception: {}'.format(e))
+        traceback.print_exc()
 
     if scraper:
         scraper.close()

@@ -17,6 +17,8 @@ class ICScraper(object):
         self._driver = webdriver.Chrome()
         print('Chrome spawned at {}'.format(datetime.now()))
 
+        self.last_contact_info = None
+
     @staticmethod
     def _get_config(config_path):
         required_keys = {'email', 'pass'}
@@ -166,6 +168,11 @@ class ICScraper(object):
         for row in phone_rows:
             phone_number = row.find_element_by_class_name('usage-phone-number').text
             phone_type = row.find_element_by_class_name('usage-line-type').text
+
+            # Skip fax numbers
+            if phone_type.lower() == 'fax':
+                continue
+
             contact_dict['phone_numbers'][phone_number] = phone_type
 
         email_rows = main_report.find_elements_by_class_name('email-usage')
@@ -181,7 +188,7 @@ class ICScraper(object):
         Wrapper for find() and get_info() if all results are desirable. De-duping built-in.
         :return: dict
         """
-        full_info = {'phone_numbers': dict(), 'email_addresses': set()}
+        full_info = {'phone_numbers': set(), 'email_addresses': set()}
         scrape_index = 0
 
         search_results = self.find(first=first, last=last, city=city, state=state, verbose=True)
@@ -193,8 +200,8 @@ class ICScraper(object):
             # Opens Report and generates info dict
             single_info = self.get_info(search_result=search_results[scrape_index])
 
-            for key, value in single_info['phone_numbers'].items():
-                full_info['phone_numbers'][key] = value
+            for key in single_info['phone_numbers'].keys():
+                full_info['phone_numbers'].add(key)
 
             for value in single_info['email_addresses']:
                 full_info['email_addresses'].add(value)
@@ -203,6 +210,8 @@ class ICScraper(object):
             search_results = self.find(first=first, last=last, city=city, state=state)
 
             scrape_index += 1
+
+        self.last_contact_info = full_info
 
         return full_info
 
