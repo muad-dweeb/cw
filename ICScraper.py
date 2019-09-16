@@ -1,5 +1,6 @@
 import json
 import os
+import random
 import time
 from datetime import datetime
 
@@ -18,6 +19,7 @@ class ICScraper(object):
         print('Chrome spawned at {}'.format(datetime.now()))
 
         self.last_contact_info = None
+        self._wait_range = (5, 120)  # Seconds between searches, randomized to hopefully throw off bot-detection
 
     @staticmethod
     def _get_config(config_path):
@@ -196,6 +198,11 @@ class ICScraper(object):
 
         # NOTE: New elements are generated each time the search page is loaded, rendering all previous elements stale
         while scrape_index < len(search_results):
+
+            if scrape_index > 0:
+                wait_time = random.uniform(*self._wait_range)
+                print('Waiting for {} seconds...'.format(round(wait_time, 2)))
+                time.sleep(wait_time)
 
             # Opens Report and generates info dict
             single_info = self.get_info(search_result=search_results[scrape_index])
