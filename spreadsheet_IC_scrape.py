@@ -122,12 +122,22 @@ if __name__ == '__main__':
         # Output Sheet
         out_file = SheetManager.create_new_filename(in_path=in_file, overwrite_existing=True)
 
-        # TODO: User prompt if out_file already exists; warn of overwrite!
-        #  Provide instructions to either rename the files or update the config json
-
     except SheetConfigException as e:
         print('Failed to load sheet config \'{}\'. Error: {}'.format(args.config, e))
         sys.exit(1)
+
+    # User prompt if out_file already exists; warn of overwrite!
+    if path.isfile(out_file):
+        print('WARNING: Output file already exists: {}'.format(out_file))
+        overwrite = input('Do you wish to overwrite existing file? '
+                          'All previous scrapes in this file will be lost!'
+                          'yes/no')
+        if overwrite.lower() != 'yes':
+            print('Aborting scrape.')
+            print('Either rename the file you wish to use as input to match the \'location\' value in the config, '
+                  'or edit the config \'location\' value to match the input file you wish to use.')
+            print('Config: {}'.format(args.config))
+            sys.exit()
 
     # DO THE THING!
     try:
