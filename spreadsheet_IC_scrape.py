@@ -3,6 +3,7 @@ import traceback
 from argparse import ArgumentParser
 from copy import deepcopy
 from csv import DictReader, DictWriter
+from datetime import datetime, timedelta
 from os import path
 from re import compile
 
@@ -93,15 +94,18 @@ def get_columns(dict_reader, config_dict):
 if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('--config', required=True, help='Configuration name')
-    parser.add_argument('--limit-rows', type=int, help='Number of Sheet rows to limit scraping to')
+    parser.add_argument('--limit-rows', required=False, type=int, help='Number of Sheet rows to limit scraping to')
+    parser.add_argument('--limit-minutes', required=False, type=int, help='Number of minutes to limit scraping to')
     parser.add_argument('--verbose', default=False, help='Increase print verbosity', action='store_true')
     args = parser.parse_args()
 
     config = None
     scraper = None
+    time_limit = None
 
     verbose = args.verbose
     limit_rows = args.limit_rows
+    limit_minutes = args.limit_minutes
 
     # Load required files
     try:
@@ -169,6 +173,14 @@ if __name__ == '__main__':
             sheet_writer.writeheader()
 
             # Iterate through rows in the spreadsheet
+            start_time = datetime.now()
+            # TODO: The following print would be rendered obsolete with a decently-formatted logger
+            print('Beginning scrape at {}'.format(start_time))
+            if limit_minutes is not None:
+                time_limit = start_time + timedelta(minutes=limit_minutes)
+                print('Estimated end at {}'.format(time_limit))
+            print(SEP)
+
             row_count = 0
             for row in sheet_reader:
 
@@ -239,7 +251,12 @@ if __name__ == '__main__':
 
                 print(SEP)
 
-                if row_count >= limit_rows:
+                if limit_rows is not None and row_count >= limit_rows:
+                    print('Row limit ({}) reached!'.format(limit_rows))
+                    break
+
+                if time_limit is not None and datetime.now() >= time_limit:
+                    print('Minute limit ({}) reached!'.format(limit_minutes))
                     break
 
     except ScraperException as e:
