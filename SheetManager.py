@@ -88,7 +88,7 @@ class SheetManager(object):
                             print('    ID match: {}'.format(master_id))
 
                         # Add all children values to out_dict
-                        for c_key, c_value in c_row.iteritems():
+                        for c_key, c_value in c_row.items():
                             out_dict[c_key] = c_value
 
                         # Delete child from remaining children so it is never iterated over again
