@@ -4,11 +4,9 @@ from copy import deepcopy
 from datetime import datetime
 from os import path
 
+from exceptions import SheetManagerException
+
 SEP = '-' * 70
-
-
-class SheetManagerException(BaseException):
-    pass
 
 
 class SheetManager(object):
@@ -21,8 +19,8 @@ class SheetManager(object):
         self._master_config = master_config
         self._child_config = child_config
 
-        out_file = self._create_new_filename(in_path=self._master_config.location,
-                                             overwrite_existing=overwrite)
+        out_file = self.create_new_filename(in_path=self._master_config.location,
+                                            overwrite_existing=overwrite)
         self.out_file = path.expanduser(out_file)
 
         # Required files
@@ -233,7 +231,7 @@ class SheetManager(object):
         return uid
 
     @staticmethod
-    def _create_new_filename(in_path, overwrite_existing=False):
+    def create_new_filename(in_path, overwrite_existing=False):
         """ Save to a new CSV file with an incrementing filename unless overwrite is requested """
         # YYYYMMDD
         now_string = datetime.now().strftime('%Y%m%d')

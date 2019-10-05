@@ -3,8 +3,7 @@ from os import path
 
 import pandas
 
-from SheetManager import SheetManagerException
-
+from exceptions import SheetManagerException
 
 """
 Attempting to use pandas for faster, more efficient merging.

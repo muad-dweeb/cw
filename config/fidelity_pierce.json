@@ -1,5 +1,9 @@
 {
 	"location": "~/muad-dweeb/cw/data/Fidelity Pierce County 3+ units.csv",
 	"id_column": "Parcel Number",
-	"id_char_count": 10
+	"id_char_count": 10,
+	"first_name_column": "Owner\\d? First Name",
+	"last_name_column": "Owner\\d? Last Name",
+	"city_column": "Mail Address City",
+	"state_column": "Mail Address State"
 }

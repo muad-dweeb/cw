@@ -1,9 +1,7 @@
 import json
 import os
 
-
-class SheetConfigException(BaseException):
-    pass
+from exceptions import SheetConfigException
 
 
 class SheetConfig(object):
@@ -13,6 +11,7 @@ class SheetConfig(object):
         config_name = os.path.splitext(config_name)[0]
         config_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'config')
         self.config_file = os.path.join(config_dir, config_name) + '.json'
+        self.dict = None
 
         if not os.path.isfile(self.config_file):
             raise SheetConfigException('File does not exist: {}'.format(self.config_file))
@@ -23,19 +22,19 @@ class SheetConfig(object):
 
         try:
             with open(self.config_file, 'r') as f:
-                config_dict = json.load(f)
+                self.dict = json.load(f)
         except Exception as e:
             raise SheetConfigException('Unable to read JSON from file: {}. '
                                        'Error: {}'.format(self.config_file, e))
 
         for key in required_keys:
-            if key not in config_dict.keys():
+            if key not in self.dict.keys():
                 raise SheetConfigException('Required key \'{}\' missing from '
-                                           'config JSON: {}'.format(key, config_dict))
+                                           'config JSON: {}'.format(key, self.dict))
 
-        self.location = config_dict['location']
-        self.id_column = config_dict['id_column']
-        self.id_char_count = config_dict['id_char_count']
+        self.location = self.dict['location']
+        self.id_column = self.dict['id_column']
+        self.id_char_count = self.dict['id_char_count']
 
         # Validate id char count
         if self.id_char_count != 'mixed' and type(self.id_char_count) != int:
