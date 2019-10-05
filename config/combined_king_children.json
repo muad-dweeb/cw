@@ -1,0 +1,5 @@
+{
+	"location": "~/muad-dweeb/cw/data/combined_king_children.csv",
+	"id_column": "Parcel Number",
+	"id_char_count": 10
+}
