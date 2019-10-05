@@ -37,7 +37,7 @@ if __name__ == '__main__':
 
     try:
         # Create sheet manager object
-        manager = SheetManager(master_config=master_config, child_config=child_config)
+        manager = SheetManager(master_config=master_config, child_config=child_config, verbose=verbose)
 
         # Perform the requested operation
         if operation == 'merge':
