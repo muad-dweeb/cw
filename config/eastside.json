@@ -1,0 +1,5 @@
+{
+	"location": "~/muad-dweeb/cw/data/Eastside Apartments.csv",
+	"id_column": "APN - FORMATTED",
+	"id_char_count": 10
+}

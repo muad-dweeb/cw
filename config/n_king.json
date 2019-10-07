@@ -1,0 +1,5 @@
+{
+	"location": "~/muad-dweeb/cw/data/N King List.csv",
+	"id_column": "Parcel # (N King)",
+	"id_char_count": 10
+}

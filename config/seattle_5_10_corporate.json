@@ -1,0 +1,5 @@
+{
+	"location": "~/muad-dweeb/cw/data/Seattle 5-10 units - Corporate.csv",
+	"id_column": "PARCEL NUMBER",
+	"id_char_count": 10
+}
