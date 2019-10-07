@@ -1,3 +1,4 @@
+import sys
 import traceback
 from argparse import ArgumentParser
 import time
@@ -34,6 +35,7 @@ if __name__ == '__main__':
     except SheetConfigException as e:
         print('Failed to load configurations. Error: {}'.format(e))
         traceback.print_exc()
+        sys.exit(1)
 
     try:
         # Create sheet manager object
