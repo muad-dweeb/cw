@@ -9,17 +9,19 @@ from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import NoSuchElementException
 
 from exceptions import ScraperException
+from util import random_sleep
 
 
 class ICScraper(object):
 
-    def __init__(self):
+    def __init__(self, wait_range):
         self.root = 'https://www.instantcheckmate.com/dashboard'
         self._driver = webdriver.Chrome()
         print('Chrome spawned at {}'.format(datetime.now()))
 
         self.last_contact_info = None
-        self._wait_range = (5, 120)  # Seconds between searches, randomized to hopefully throw off bot-detection
+        # Seconds between searches, randomized to hopefully throw off bot-detection
+        self._wait_range = wait_range
 
     @staticmethod
     def _get_config(config_path):
@@ -169,7 +171,10 @@ class ICScraper(object):
         phone_rows = main_report.find_elements_by_class_name('phone-row')
         for row in phone_rows:
             phone_number = row.find_element_by_class_name('usage-phone-number').text
-            phone_type = row.find_element_by_class_name('usage-line-type').text
+            try:
+                phone_type = row.find_element_by_class_name('usage-line-type').text
+            except NoSuchElementException:
+                phone_type = 'unknown'
 
             # Skip fax numbers
             if phone_type.lower() == 'fax':
@@ -200,9 +205,7 @@ class ICScraper(object):
         while scrape_index < len(search_results):
 
             if scrape_index > 0:
-                wait_time = random.uniform(*self._wait_range)
-                print('Waiting for {} seconds...'.format(round(wait_time, 2)))
-                time.sleep(wait_time)
+                random_sleep(self._wait_range)
 
             # Opens Report and generates info dict
             single_info = self.get_info(search_result=search_results[scrape_index])

@@ -13,7 +13,7 @@ from ICScraper import ICScraper
 from SheetConfig import SheetConfig
 from SheetManager import SheetManager
 from exceptions import ScraperException, SheetConfigException
-
+from util import random_sleep
 
 SEP = '-' * 60
 
@@ -103,6 +103,10 @@ if __name__ == '__main__':
     scraper = None
     time_limit = None
 
+    # Seconds between searches, randomized to hopefully throw off bot-detection
+    wait_range_between_rows = (5, 120)
+    wait_range_between_sub_searches = (2, 30)
+
     verbose = args.verbose
     limit_rows = args.limit_rows
     limit_minutes = args.limit_minutes
@@ -141,7 +145,7 @@ if __name__ == '__main__':
 
     # DO THE THING!
     try:
-        scraper = ICScraper()
+        scraper = ICScraper(wait_range=wait_range_between_sub_searches)
         scraper.manual_login()
 
         with open(out_file, 'w') as out:
@@ -194,14 +198,23 @@ if __name__ == '__main__':
             row_count = 0
             for row in sheet_reader:
 
+                row_count += 1
+
                 # Skip already-scraped rows
-                if 'scraped' in row.keys() and row['scraped'] is True:
+                if 'scraped' in row.keys() and bool(row['scraped']) is True:
+                    print('Skipping previously scraped row. Index: {}'.format(row_count))
+                    sheet_writer.writerow(row)
                     continue
+
+                # Randomized wait in between searches
+                if row_count > 0:
+                    random_sleep(wait_range_between_rows)
 
                 output_row = deepcopy(row)
                 grouped_contact_dict = dict()
 
                 # Iterate through groups of columns
+                scraped_count = 0
                 index = 0
                 while index < column_dict['count']:
                     first_name = row[column_dict['first_names'][index]].strip().upper()
@@ -215,7 +228,7 @@ if __name__ == '__main__':
                     if first_name not in (None, '') and last_name not in (None, ''):
 
                         # Only increment this if the row has the required data
-                        row_count += 1
+                        scraped_count += 1
 
                         current_search['first_name'] = first_name
                         current_search['last_name'] = last_name
@@ -262,7 +275,8 @@ if __name__ == '__main__':
 
                 print(SEP)
 
-                if limit_rows is not None and row_count >= limit_rows:
+                # TODO: This appears to be broken
+                if limit_rows is not None and scraped_count >= limit_rows:
                     print('Row limit ({}) reached!'.format(limit_rows))
                     break
 
@@ -280,5 +294,6 @@ if __name__ == '__main__':
         print('Unhandled exception: {}'.format(e))
         traceback.print_exc()
 
+    # TODO: Make this a CLI option
     if scraper:
         scraper.close()
