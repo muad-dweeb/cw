@@ -201,8 +201,6 @@ if __name__ == '__main__':
                 output_row = deepcopy(row)
                 grouped_contact_dict = dict()
 
-                row_count += 1
-
                 # Iterate through groups of columns
                 index = 0
                 while index < column_dict['count']:
@@ -216,6 +214,9 @@ if __name__ == '__main__':
                     # Skip empty column groups
                     if first_name not in (None, '') and last_name not in (None, ''):
 
+                        # Only increment this if the row has the required data
+                        row_count += 1
+
                         current_search['first_name'] = first_name
                         current_search['last_name'] = last_name
                         current_search['city'] = city
@@ -223,7 +224,7 @@ if __name__ == '__main__':
 
                         if current_search != last_search:
                             if verbose:
-                                print('Search: {} () , () ()'.format(first_name, last_name, city, state))
+                                print('Search: {} ({}) , ({}) ({})'.format(first_name, last_name, city, state))
 
                             # Use the current search params to scrape contact info
                             contact_info = scraper.get_all_info(first=first_name, last=last_name, city=city, state=state)
