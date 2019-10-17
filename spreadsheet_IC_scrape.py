@@ -97,6 +97,7 @@ if __name__ == '__main__':
     parser.add_argument('--limit-rows', required=False, type=int, help='Number of Sheet rows to limit scraping to')
     parser.add_argument('--limit-minutes', required=False, type=int, help='Number of minutes to limit scraping to')
     parser.add_argument('--verbose', default=False, help='Increase print verbosity', action='store_true')
+    parser.add_argument('--auto-close', default=False, help='Close the browser when finished', action='store_true')
     args = parser.parse_args()
 
     config = None
@@ -110,6 +111,7 @@ if __name__ == '__main__':
     verbose = args.verbose
     limit_rows = args.limit_rows
     limit_minutes = args.limit_minutes
+    auto_close = args.auto_close
 
     # Load required files
     try:
@@ -237,7 +239,7 @@ if __name__ == '__main__':
 
                         if current_search != last_search:
                             if verbose:
-                                print('Search: {} ({}) , ({}) ({})'.format(first_name, last_name, city, state))
+                                print('Search: {} {} , {} {}'.format(first_name, last_name, city, state))
 
                             # Use the current search params to scrape contact info
                             contact_info = scraper.get_all_info(first=first_name, last=last_name, city=city, state=state)
@@ -294,6 +296,5 @@ if __name__ == '__main__':
         print('Unhandled exception: {}'.format(e))
         traceback.print_exc()
 
-    # TODO: Make this a CLI option
-    if scraper:
+    if scraper and auto_close:
         scraper.close()
