@@ -103,9 +103,11 @@ if __name__ == '__main__':
     config = None
     scraper = None
     time_limit = None
+    row_count = 0
+    scraped_count = 0
 
     # Seconds between searches, randomized to hopefully throw off bot-detection
-    wait_range_between_rows = (5, 120)
+    wait_range_between_rows = (5, 90)
     wait_range_between_sub_searches = (2, 30)
 
     verbose = args.verbose
@@ -132,21 +134,30 @@ if __name__ == '__main__':
         print('Failed to load sheet config \'{}\'. Error: {}'.format(args.config, e))
         sys.exit(1)
 
-    # User prompt if out_file already exists; warn of overwrite!
-    if path.isfile(out_file):
-        print('WARNING: Output file already exists: {}'.format(out_file))
-        overwrite = input('Do you wish to overwrite existing file? '
-                          'All previous scrapes in this file will be lost!'
-                          'yes/no')
-        if overwrite.lower() != 'yes':
-            print('Aborting scrape.')
-            print('Either rename the file you wish to use as input to match the \'location\' value in the config, '
-                  'or edit the config \'location\' value to match the input file you wish to use.')
-            print('Config: {}'.format(args.config))
-            sys.exit()
-
     # DO THE THING!
     try:
+
+        start_time = datetime.now()
+        # TODO: The following print would be rendered obsolete with a decently-formatted logger
+        print('Beginning scrape at {}'.format(start_time))
+        if limit_minutes is not None:
+            time_limit = start_time + timedelta(minutes=limit_minutes)
+            print('Estimated end at {}'.format(time_limit))
+
+        # User prompt if out_file already exists; warn of overwrite!
+        if path.isfile(out_file):
+            print(SEP)
+            print('WARNING: Output file already exists: {}'.format(out_file))
+            overwrite = input('Do you wish to overwrite existing file? '
+                              'All previous scrapes in this file will be lost! '
+                              '(yes/no)\n')
+            if overwrite.lower() != 'yes':
+                print('Aborting scrape.')
+                print('Either rename the file you wish to use as input to match the \'location\' value in the config, '
+                      'or edit the config \'location\' value to match the input file you wish to use.')
+                print('Config: {}'.format(args.config))
+                sys.exit()
+
         scraper = ICScraper(wait_range=wait_range_between_sub_searches)
         scraper.manual_login()
 
@@ -189,15 +200,6 @@ if __name__ == '__main__':
             sheet_writer.writeheader()
 
             # Iterate through rows in the spreadsheet
-            start_time = datetime.now()
-            # TODO: The following print would be rendered obsolete with a decently-formatted logger
-            print('Beginning scrape at {}'.format(start_time))
-            if limit_minutes is not None:
-                time_limit = start_time + timedelta(minutes=limit_minutes)
-                print('Estimated end at {}'.format(time_limit))
-            print(SEP)
-
-            row_count = 0
             for row in sheet_reader:
 
                 row_count += 1
@@ -208,15 +210,16 @@ if __name__ == '__main__':
                     sheet_writer.writerow(row)
                     continue
 
+                print(SEP)
+
                 # Randomized wait in between searches
-                if row_count > 0:
+                if scraped_count > 0:
                     random_sleep(wait_range_between_rows)
 
                 output_row = deepcopy(row)
                 grouped_contact_dict = dict()
 
                 # Iterate through groups of columns
-                scraped_count = 0
                 index = 0
                 while index < column_dict['count']:
                     first_name = row[column_dict['first_names'][index]].strip().upper()
@@ -275,9 +278,6 @@ if __name__ == '__main__':
                 # Write out the completed row
                 sheet_writer.writerow(output_row)
 
-                print(SEP)
-
-                # TODO: This appears to be broken
                 if limit_rows is not None and scraped_count >= limit_rows:
                     print('Row limit ({}) reached!'.format(limit_rows))
                     break
@@ -290,7 +290,10 @@ if __name__ == '__main__':
         print('Scrape failed. Error: {}'.format(e))
 
     except NoSuchWindowException:
-        print('Window was closed prematurely')
+        print('Window was closed prematurely.')
+
+    except KeyboardInterrupt:
+        print('Run interrupted by User.')
 
     except Exception as e:
         print('Unhandled exception: {}'.format(e))
@@ -298,3 +301,11 @@ if __name__ == '__main__':
 
     if scraper and auto_close:
         scraper.close()
+
+    end_time = datetime.now()
+    duration = end_time - start_time
+    print(SEP)
+    print('Scrape completed at {}'.format(end_time))
+    print('Total run time: {}'.format(duration))
+    print('Total rows processed: {}'.format(row_count))
+    print('Total rows successfully scraped: {}'.format(scraped_count))
