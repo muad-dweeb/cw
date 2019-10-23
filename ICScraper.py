@@ -210,8 +210,8 @@ class ICScraper(object):
             # Opens Report and generates info dict
             single_info = self.get_info(search_result=search_results[scrape_index])
 
-            for key in single_info['phone_numbers'].keys():
-                full_info['phone_numbers'].add(key)
+            for number, number_type in single_info['phone_numbers'].items():
+                full_info['phone_numbers'].add('{} ({})'.format(number, number_type))
 
             for value in single_info['email_addresses']:
                 full_info['email_addresses'].add(value)

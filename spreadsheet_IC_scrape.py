@@ -134,15 +134,20 @@ if __name__ == '__main__':
         print('Failed to load sheet config \'{}\'. Error: {}'.format(args.config, e))
         sys.exit(1)
 
+    start_time = datetime.now()
+    # TODO: The following print would be rendered obsolete with a decently-formatted logger
+    print('Beginning scrape at {}'.format(start_time))
+
     # DO THE THING!
     try:
 
-        start_time = datetime.now()
-        # TODO: The following print would be rendered obsolete with a decently-formatted logger
-        print('Beginning scrape at {}'.format(start_time))
         if limit_minutes is not None:
             time_limit = start_time + timedelta(minutes=limit_minutes)
+            print('Run limited to {} minutes'.format(limit_minutes))
             print('Estimated end at {}'.format(time_limit))
+
+        if limit_rows is not None:
+            print('Run limited to {} rows'.format(limit_rows))
 
         # User prompt if out_file already exists; warn of overwrite!
         if path.isfile(out_file):
@@ -206,7 +211,8 @@ if __name__ == '__main__':
 
                 # Skip already-scraped rows
                 if 'scraped' in row.keys() and bool(row['scraped']) is True:
-                    print('Skipping previously scraped row. Index: {}'.format(row_count))
+                    if verbose:
+                        print('Skipping previously scraped row. Index: {}'.format(row_count))
                     sheet_writer.writerow(row)
                     continue
 
@@ -266,9 +272,9 @@ if __name__ == '__main__':
 
                     # Write contact info to output row
                     if len(phone_numbers) > 0:
-                        output_row[contact_columns['phone'][contact_index]] = ','.join(phone_numbers)
+                        output_row[contact_columns['phone'][contact_index]] = ', '.join(phone_numbers)
                     if len(email_addresses) > 0:
-                        output_row[contact_columns['email'][contact_index]] = ','.join(email_addresses)
+                        output_row[contact_columns['email'][contact_index]] = ', '.join(email_addresses)
 
                     # TODO: split the phone numbers and email addresses across multiple rows (VERY DIFFICULT)
 
