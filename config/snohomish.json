@@ -1,0 +1,9 @@
+{
+	"location": "~/muad-dweeb/cw/data/SNOHOMISH 3 to 70 Units.csv",
+        "id_column": null,
+        "id_char_count": 0,
+	"first_name_column": "Owner \\d? Name First",
+	"last_name_column": "Owner \\d? Name Last",
+	"city_column": "Mail City",
+	"state_column": "Mail State"
+}
