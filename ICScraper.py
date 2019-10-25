@@ -1,5 +1,6 @@
 import json
 import os
+import pickle
 import time
 from datetime import datetime
 
@@ -44,6 +45,17 @@ class ICScraper(object):
 
         print('Config successfully loaded from: {}'.format(config_path))
         return config_dict
+
+    def save_session_cookies(self, file_path):
+        pickle.dump(self._driver.get_cookies(), open(file_path, 'wb'))
+        if self._verbose:
+            print('Session cookies saved to: {}'.format(file_path))
+
+    def load_session_cookies(self, file_path):
+        for cookie in pickle.load(open(file_path, 'rb')):
+            self._driver.add_cookie(cookie)
+        if self._verbose:
+            print('Session cookies loaded from: {}'.format(file_path))
 
     def manual_login(self):
         """
