@@ -220,7 +220,7 @@ if __name__ == '__main__':
 
                 # Randomized wait in between searches
                 if scraped_count > 0:
-                    random_sleep(wait_range_between_rows)
+                    random_sleep(wait_range_between_rows, verbose=verbose)
 
                 output_row = deepcopy(row)
                 grouped_contact_dict = dict()

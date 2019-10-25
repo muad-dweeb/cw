@@ -1,6 +1,5 @@
 import json
 import os
-import random
 import time
 from datetime import datetime
 
@@ -14,7 +13,7 @@ from util import random_sleep
 
 class ICScraper(object):
 
-    def __init__(self, wait_range):
+    def __init__(self, wait_range, verbose=False):
         self.root = 'https://www.instantcheckmate.com/dashboard'
         self._driver = webdriver.Chrome()
         print('Chrome spawned at {}'.format(datetime.now()))
@@ -22,6 +21,7 @@ class ICScraper(object):
         self.last_contact_info = None
         # Seconds between searches, randomized to hopefully throw off bot-detection
         self._wait_range = wait_range
+        self._verbose = verbose
 
     @staticmethod
     def _get_config(config_path):
@@ -205,7 +205,7 @@ class ICScraper(object):
         while scrape_index < len(search_results):
 
             if scrape_index > 0:
-                random_sleep(self._wait_range)
+                random_sleep(self._wait_range, verbose=self._verbose)
 
             # Opens Report and generates info dict
             single_info = self.get_info(search_result=search_results[scrape_index])
