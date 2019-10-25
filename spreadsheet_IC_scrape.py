@@ -163,7 +163,7 @@ if __name__ == '__main__':
                 print('Config: {}'.format(args.config))
                 sys.exit()
 
-        scraper = ICScraper(wait_range=wait_range_between_sub_searches)
+        scraper = ICScraper(wait_range=wait_range_between_sub_searches, time_limit=time_limit, verbose=verbose)
         scraper.manual_login()
 
         with open(out_file, 'w') as out:

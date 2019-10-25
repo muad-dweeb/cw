@@ -13,7 +13,7 @@ from util import random_sleep
 
 class ICScraper(object):
 
-    def __init__(self, wait_range, verbose=False):
+    def __init__(self, wait_range, time_limit=None, verbose=False):
         self.root = 'https://www.instantcheckmate.com/dashboard'
         self._driver = webdriver.Chrome()
         print('Chrome spawned at {}'.format(datetime.now()))
@@ -21,6 +21,7 @@ class ICScraper(object):
         self.last_contact_info = None
         # Seconds between searches, randomized to hopefully throw off bot-detection
         self._wait_range = wait_range
+        self._time_limit = time_limit
         self._verbose = verbose
 
     @staticmethod
@@ -101,11 +102,24 @@ class ICScraper(object):
 
         print('Login successful')
 
+    def _detect_login_page(self):
+        try:
+            self._driver.find_element_by_css_selector("input[type='email']")
+            self._driver.find_element_by_css_selector("input[type='password']")
+        except NoSuchElementException:
+            return False
+        return True
+
     def find(self, first, last, city, state, verbose=False):
         matches = list()
 
         search_url = self.root + '/search/person/?first={}&last={}&city={}&state={}'.format(first, last, city, state)
         self._driver.get(search_url)
+
+        while self._detect_login_page() and (self._time_limit is None or datetime.now() < self._time_limit):
+            time.sleep(5)
+        if self._detect_login_page():
+            return ScraperException('Account logged out. Discontinuing scrape.')
 
         results_list = self._driver.find_elements_by_class_name('result')
 
