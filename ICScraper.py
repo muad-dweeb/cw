@@ -6,7 +6,7 @@ from datetime import datetime
 
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
-from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import NoSuchElementException, InvalidArgumentException
 
 from exceptions import ScraperException
 from util import random_sleep
@@ -53,17 +53,27 @@ class ICScraper(object):
 
     def load_session_cookies(self, file_path):
         for cookie in pickle.load(open(file_path, 'rb')):
-            self._driver.add_cookie(cookie)
+            for key, value in cookie.items():
+                value = str(value)
+                try:
+                    self._driver.add_cookie({'name': key, 'value': value})
+                except InvalidArgumentException as e:
+                    raise ScraperException('Failed to add cookie key \'{}\' to session. Error: {}'.format(key, e))
         if self._verbose:
             print('Session cookies loaded from: {}'.format(file_path))
 
-    def manual_login(self):
+    def manual_login(self, cookie_file):
         """
         Just loads the login screen. It's up to the user to enter creds and click the stupid images
         :return:
         """
         login_url = self.root + '/login'
         self._driver.get(login_url)
+
+        if os.path.isfile(cookie_file):
+            # Yeah, this definitely doesn't do anything useful...
+            self.load_session_cookies(cookie_file)
+            self._driver.refresh()
 
         # Verify login success
         success = False
@@ -75,6 +85,8 @@ class ICScraper(object):
                 time.sleep(2)
 
         print('Login successful')
+        self.save_session_cookies(cookie_file)
+
         return True
 
     def auto_login(self, config_path):

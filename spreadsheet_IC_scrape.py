@@ -107,8 +107,8 @@ if __name__ == '__main__':
     scraped_count = 0
 
     # Seconds between searches, randomized to hopefully throw off bot-detection
-    wait_range_between_rows = (30, 300)
-    wait_range_between_sub_searches = (2, 30)
+    wait_range_between_rows = (15, 180)
+    wait_range_between_sub_searches = (10, 45)
 
     cookie_file = path.join(path.dirname(path.abspath(__file__)), 'data', '.cookie_jar.pkl')
 
@@ -166,10 +166,7 @@ if __name__ == '__main__':
                 sys.exit()
 
         scraper = ICScraper(wait_range=wait_range_between_sub_searches, time_limit=time_limit, verbose=verbose)
-        if path.isfile(cookie_file):
-            scraper.load_session_cookies(cookie_file)
-        scraper.manual_login()
-        scraper.save_session_cookies(cookie_file)
+        scraper.manual_login(cookie_file)
 
         with open(out_file, 'w') as out:
             print('Writing to:     {}'.format(out_file))
