@@ -6,7 +6,7 @@ from datetime import datetime
 
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
-from selenium.common.exceptions import NoSuchElementException, InvalidArgumentException
+from selenium.common.exceptions import NoSuchElementException, InvalidArgumentException, WebDriverException
 
 from exceptions import ScraperException
 from util import random_sleep
@@ -62,13 +62,28 @@ class ICScraper(object):
         if self._verbose:
             print('Session cookies loaded from: {}'.format(file_path))
 
+    def _load_page(self, url, retry=3):
+        success = False
+        while success is False and retry > 0:
+            try:
+                self._driver.get(url)
+                success = True
+            except WebDriverException as e:
+                retry -= 1
+                print('{}. Retries left: {}'.format(e, retry))
+        if success is False:
+            raise ScraperException('Page failed to load; retry limit reached.')
+
     def manual_login(self, cookie_file):
         """
         Just loads the login screen. It's up to the user to enter creds and click the stupid images
         :return:
         """
         login_url = self.root + '/login'
-        self._driver.get(login_url)
+        try:
+            self._load_page(login_url)
+        except ScraperException as e:
+            raise ScraperException('Unable to load login page: {}. {}'.format(login_url, e))
 
         if os.path.isfile(cookie_file):
             # Yeah, this definitely doesn't do anything useful...
@@ -100,7 +115,10 @@ class ICScraper(object):
         captcha_timeout = 360
         config = self._get_config(config_path=config_path)
         login_url = self.root + '/login'
-        self._driver.get(login_url)
+        try:
+            self._load_page(login_url)
+        except ScraperException as e:
+            raise ScraperException('Unable to load login page: {}. {}'.format(login_url, e))
 
         email_input = self._driver.find_element_by_css_selector("input[type='email']")
         pass_input = self._driver.find_element_by_css_selector("input[type='password']")
@@ -138,7 +156,10 @@ class ICScraper(object):
         matches = list()
 
         search_url = self.root + '/search/person/?first={}&last={}&city={}&state={}'.format(first, last, city, state)
-        self._driver.get(search_url)
+        try:
+            self._load_page(search_url)
+        except ScraperException as e:
+            raise ScraperException('Failed to load search page: {}. Error: {}'.format(search_url, e))
 
         while self._detect_login_page() and (self._time_limit is None or datetime.now() < self._time_limit):
             time.sleep(5)
