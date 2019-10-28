@@ -4,11 +4,12 @@ from argparse import ArgumentParser
 from copy import deepcopy
 from csv import DictReader, DictWriter
 from datetime import datetime, timedelta
-from os import path
+from os import path, getpid
 from re import compile
 
 from selenium.common.exceptions import NoSuchWindowException
 
+from Caffeine import Caffeine
 from ICScraper import ICScraper
 from SheetConfig import SheetConfig
 from SheetManager import SheetManager
@@ -116,6 +117,10 @@ if __name__ == '__main__':
     limit_rows = args.limit_rows
     limit_minutes = args.limit_minutes
     auto_close = args.auto_close
+
+    # Keep-alive
+    pid = getpid()
+    Caffeine().start(pid)
 
     # Load required files
     try:
