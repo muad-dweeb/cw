@@ -64,10 +64,16 @@ class ICScraper(object):
 
     def _load_page(self, url, retry=3):
         success = False
+        message_404 = 'Uh Oh! Looks like something went wrong.'
+        retry_wait_range = (0, 10)
         while success is False and retry > 0:
             try:
                 self._driver.get(url)
-                success = True
+                if message_404 in self._driver.page_source:
+                    print('404 Page detected.')
+                    random_sleep(retry_wait_range, verbose=True)
+                else:
+                    success = True
             except WebDriverException as e:
                 retry -= 1
                 print('{}. Retries left: {}'.format(e, retry))
@@ -183,6 +189,12 @@ class ICScraper(object):
 
             # Secondary validation to make sure the most recent location matches the input city
             locations_list = result.find_elements_by_class_name('person-location')
+
+            # No cities listed
+            if len(locations_list) == 0:
+                continue
+
+            # First listed city does not match
             if locations_list[0].text.split(',')[0].lower() != city.lower():
                 continue
 
@@ -263,9 +275,6 @@ class ICScraper(object):
         # NOTE: New elements are generated each time the search page is loaded, rendering all previous elements stale
         while scrape_index < len(search_results):
 
-            if scrape_index > 0:
-                random_sleep(self._wait_range, verbose=self._verbose)
-
             # Opens Report and generates info dict
             single_info = self.get_info(search_result=search_results[scrape_index])
 
@@ -274,6 +283,9 @@ class ICScraper(object):
 
             for value in single_info['email_addresses']:
                 full_info['email_addresses'].add(value)
+
+            if scrape_index > 0:
+                random_sleep(self._wait_range, verbose=self._verbose)
 
             # Navigate back to search results page
             search_results = self.find(first=first, last=last, city=city, state=state)
