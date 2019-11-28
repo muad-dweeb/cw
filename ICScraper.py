@@ -65,12 +65,16 @@ class ICScraper(object):
     def _load_page(self, url, retry=3):
         success = False
         message_404 = 'Uh Oh! Looks like something went wrong.'
+        message_504 = 'we\'ve encountered an error.'
         retry_wait_range = (0, 10)
         while success is False and retry > 0:
             try:
                 self._driver.get(url)
                 if message_404 in self._driver.page_source:
                     print('404 Page detected.')
+                    random_sleep(retry_wait_range, verbose=True)
+                elif message_504 in self._driver.page_source:
+                    print('504 Page detected.')
                     random_sleep(retry_wait_range, verbose=True)
                 else:
                     success = True
