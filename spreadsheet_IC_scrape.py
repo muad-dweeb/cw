@@ -106,6 +106,7 @@ if __name__ == '__main__':
     time_limit = None
     row_count = 0
     scraped_count = 0
+    failed_count = 0
 
     # Seconds between searches, randomized to hopefully throw off bot-detection
     wait_range_between_rows = (15, 180)
@@ -203,7 +204,7 @@ if __name__ == '__main__':
 
                 index += 1
 
-            # 'scraped' column is a Boolean that simply confirms that a given row was previously auto-scraped
+            # 'scraped' column is a flag that simply confirms that a given row was previously auto-scraped
             if 'scraped' not in output_columns:
                 output_columns.append('scraped')
 
@@ -215,9 +216,10 @@ if __name__ == '__main__':
             for row in sheet_reader:
 
                 row_count += 1
+                found_results = False
 
                 # Skip already-scraped rows
-                if 'scraped' in row.keys() and bool(row['scraped']) is True:
+                if 'scraped' in row.keys() and (bool(row['scraped']) is True or row['scraped'].lower == 'failed'):
                     if verbose:
                         print('Skipping previously scraped row. Index: {}'.format(row_count))
                     sheet_writer.writerow(row)
@@ -244,9 +246,6 @@ if __name__ == '__main__':
 
                     # Skip empty column groups
                     if first_name not in (None, '') and last_name not in (None, ''):
-
-                        # Only increment this if the row has the required data
-                        scraped_count += 1
 
                         current_search['first_name'] = first_name
                         current_search['last_name'] = last_name
@@ -279,14 +278,21 @@ if __name__ == '__main__':
 
                     # Write contact info to output row
                     if len(phone_numbers) > 0:
+                        found_results = True
                         output_row[contact_columns['phone'][contact_index]] = ', '.join(phone_numbers)
                     if len(email_addresses) > 0:
+                        found_results = True
                         output_row[contact_columns['email'][contact_index]] = ', '.join(email_addresses)
 
                     # TODO: split the phone numbers and email addresses across multiple rows (VERY DIFFICULT)
 
-                # Mark row as scraped to prevent future re-scrape
-                output_row['scraped'] = True
+                if found_results:
+                    # Mark row as scraped to prevent future re-scrape
+                    output_row['scraped'] = True
+                    scraped_count += 1
+                else:
+                    output_row['scraped'] = 'failed'
+                    failed_count += 1
 
                 # Write out the completed row
                 sheet_writer.writerow(output_row)
@@ -322,3 +328,5 @@ if __name__ == '__main__':
     print('Total run time: {}'.format(duration))
     print('Total rows processed: {}'.format(row_count))
     print('Total rows successfully scraped: {}'.format(scraped_count))
+    print('Total rows failed to scrape: {}'.format(failed_count))
+    print('Total reports loaded: {}'.format(scraper.reports_loaded))
