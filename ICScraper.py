@@ -30,7 +30,8 @@ class ICScraper(object):
 
         self._error_strings = {'404 Error': 'Uh Oh! Looks like something went wrong.',
                                '504 Error': 'we\'ve encountered an error.',
-                               '500 Error': 'HTTP ERROR 500'}
+                               '500 Error': 'HTTP ERROR 500',
+                               '502 Error': 'The web server reported a bad gateway error.'}
 
     @staticmethod
     def _get_config(config_path):
@@ -232,6 +233,9 @@ class ICScraper(object):
         open_report = search_result.find_element_by_class_name('view-report')
         open_report.click()
 
+        if self._detect_login_page():
+            return ScraperException('Account logged out. Discontinuing scrape.')
+
         # Verify report generation success
         countdown_begin = time.time()
         success = False
@@ -245,25 +249,23 @@ class ICScraper(object):
             except NoSuchElementException:
                 time.sleep(2)
 
+            # Loaded an error page instead of a report
+            for error, message in self._error_strings.items():
+                if message in self._driver.page_source:
+
+                    # Something is wrong with this particular report, probably server-side
+                    if error == '500 Error':
+                        print('Report broken; 500 Error detected.')
+
+                        # Call it a loss and move on
+                        return contact_dict
+
+                    print('{} detected.'.format(error))
+                    return error
+
+            # Generic time-out
             if time.time() - countdown_begin > report_timeout:
-
-                # Loaded an error page instead of a report
-                for error, message in self._error_strings.items():
-                    if message in self._driver.page_source:
-
-                        # Something is wrong with this particular report, probably server-side
-                        if error == '500 Error':
-                            print('Report broken; 500 Error detected.')
-
-                            # Call it a loss and move on
-                            return contact_dict
-
-                        print('{} detected.'.format(error))
-                        return error
-
-                # Generic time-out
-                else:
-                    raise ScraperException('Report failed to generate in {} seconds'.format(report_timeout))
+                raise ScraperException('Report failed to generate in {} seconds'.format(report_timeout))
 
         print('Report load successful')
         self.reports_loaded += 1
@@ -307,8 +309,9 @@ class ICScraper(object):
             # Opens Report and generates info dict
             single_info = self.get_info(search_result=search_results[scrape_index])
 
-            # Error page encountered; reload the search results page and try once more
             if type(single_info) == str and single_info in self._error_strings.keys():
+
+                # Error page encountered; reload the search results page and try once more
                 search_results = self.find(first=first, last=last, city=city, state=state)
                 single_info = self.get_info(search_result=search_results[scrape_index])
 
@@ -318,7 +321,10 @@ class ICScraper(object):
             for value in single_info['email_addresses']:
                 full_info['email_addresses'].add(value)
 
-            if scrape_index > 0:
+            # Don't wait after the last report; there will be a wait when the next row starts
+            if scrape_index < len(search_results) - 1:
+
+                # It takes a human some time to do anything with the report's information
                 random_sleep(self._wait_range, verbose=self._verbose)
 
             # Navigate back to search results page
