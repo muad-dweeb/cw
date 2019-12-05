@@ -114,7 +114,7 @@ if __name__ == '__main__':
     failed_count = 0
 
     # Seconds between searches, randomized to hopefully throw off bot-detection
-    wait_range_between_rows = (30, 180)
+    wait_range_between_rows = (30, 600)
     wait_range_between_report_loads = (10, 45)
 
     # Not sure if there's actually any benefit to this
@@ -230,6 +230,7 @@ if __name__ == '__main__':
                 print(SEP)
 
                 # Randomized wait in between searches
+                # TODO: add a small wait time after 0 matching results found for a row
                 if scraped_count > 0 and not last_row_was_duplicate:
                     random_sleep(wait_range_between_rows, verbose=verbose)
 
