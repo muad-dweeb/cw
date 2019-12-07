@@ -101,24 +101,26 @@ if __name__ == '__main__':
     parser.add_argument('--auto-close', default=False, help='Close the browser when finished', action='store_true')
     args = parser.parse_args()
 
+    limit_rows = args.limit_rows
+    limit_minutes = args.limit_minutes
+    verbose = args.verbose
+    auto_close = args.auto_close
+
     config = None
     scraper = None
     time_limit = None
     row_count = 0
     scraped_count = 0
+    failed_count = 0
 
     # Seconds between searches, randomized to hopefully throw off bot-detection
-    wait_range_between_rows = (15, 180)
-    wait_range_between_sub_searches = (10, 45)
+    wait_range_between_rows = (30, 600)
+    wait_range_between_report_loads = (10, 45)
 
+    # Not sure if there's actually any benefit to this
     cookie_file = path.join(path.dirname(path.abspath(__file__)), 'data', '.cookie_jar.pkl')
 
-    verbose = args.verbose
-    limit_rows = args.limit_rows
-    limit_minutes = args.limit_minutes
-    auto_close = args.auto_close
-
-    # Keep-alive
+    # Don't let the computer go to sleep, else it will kill the scraper
     pid = getpid()
     Caffeine().start(pid)
 
@@ -170,7 +172,7 @@ if __name__ == '__main__':
                 print('Config: {}'.format(args.config))
                 sys.exit()
 
-        scraper = ICScraper(wait_range=wait_range_between_sub_searches, time_limit=time_limit, verbose=verbose)
+        scraper = ICScraper(wait_range=wait_range_between_report_loads, time_limit=time_limit, verbose=verbose)
         scraper.manual_login(cookie_file)
 
         with open(out_file, 'w') as out:
@@ -203,7 +205,7 @@ if __name__ == '__main__':
 
                 index += 1
 
-            # 'scraped' column is a Boolean that simply confirms that a given row was previously auto-scraped
+            # 'scraped' column is a flag that simply confirms that a given row was previously auto-scraped
             if 'scraped' not in output_columns:
                 output_columns.append('scraped')
 
@@ -212,12 +214,14 @@ if __name__ == '__main__':
             sheet_writer.writeheader()
 
             # Iterate through rows in the spreadsheet
+            last_row_was_duplicate = False
             for row in sheet_reader:
 
                 row_count += 1
+                found_results = False
 
                 # Skip already-scraped rows
-                if 'scraped' in row.keys() and bool(row['scraped']) is True:
+                if 'scraped' in row.keys() and (bool(row['scraped']) is True or row['scraped'].lower == 'failed'):
                     if verbose:
                         print('Skipping previously scraped row. Index: {}'.format(row_count))
                     sheet_writer.writerow(row)
@@ -226,7 +230,8 @@ if __name__ == '__main__':
                 print(SEP)
 
                 # Randomized wait in between searches
-                if scraped_count > 0:
+                # TODO: add a small wait time after 0 matching results found for a row
+                if scraped_count > 0 and not last_row_was_duplicate:
                     random_sleep(wait_range_between_rows, verbose=verbose)
 
                 output_row = deepcopy(row)
@@ -245,9 +250,6 @@ if __name__ == '__main__':
                     # Skip empty column groups
                     if first_name not in (None, '') and last_name not in (None, ''):
 
-                        # Only increment this if the row has the required data
-                        scraped_count += 1
-
                         current_search['first_name'] = first_name
                         current_search['last_name'] = last_name
                         current_search['city'] = city
@@ -261,10 +263,12 @@ if __name__ == '__main__':
                             contact_info = scraper.get_all_info(first=first_name, last=last_name, city=city, state=state)
 
                             last_search = deepcopy(current_search)
+                            last_row_was_duplicate = False
 
                         else:
                             if verbose:
                                 print('\t  Skipping duplicate search...')
+                                last_row_was_duplicate = True
 
                             # Reuse the last scraped contact info
                             contact_info = scraper.last_contact_info
@@ -279,14 +283,21 @@ if __name__ == '__main__':
 
                     # Write contact info to output row
                     if len(phone_numbers) > 0:
+                        found_results = True
                         output_row[contact_columns['phone'][contact_index]] = ', '.join(phone_numbers)
                     if len(email_addresses) > 0:
+                        found_results = True
                         output_row[contact_columns['email'][contact_index]] = ', '.join(email_addresses)
 
                     # TODO: split the phone numbers and email addresses across multiple rows (VERY DIFFICULT)
 
-                # Mark row as scraped to prevent future re-scrape
-                output_row['scraped'] = True
+                if found_results:
+                    # Mark row as scraped to prevent future re-scrape
+                    output_row['scraped'] = True
+                    scraped_count += 1
+                else:
+                    output_row['scraped'] = 'failed'
+                    failed_count += 1
 
                 # Write out the completed row
                 sheet_writer.writerow(output_row)
@@ -322,3 +333,5 @@ if __name__ == '__main__':
     print('Total run time: {}'.format(duration))
     print('Total rows processed: {}'.format(row_count))
     print('Total rows successfully scraped: {}'.format(scraped_count))
+    print('Total rows failed to scrape: {}'.format(failed_count))
+    print('Total reports loaded: {}'.format(scraper.reports_loaded))
