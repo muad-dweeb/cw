@@ -40,7 +40,7 @@ if __name__ == '__main__':
         manager = SheetManager(master_config=master_config, child_config=child_config, verbose=verbose)
         manager.merge()
 
-    except Exception as error:
+    except SheetManagerException as error:
         print('Sheet management failed. Error: {}'.format(error))
         traceback.print_exc()
 
