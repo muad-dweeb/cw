@@ -9,7 +9,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import NoSuchElementException, InvalidArgumentException, WebDriverException
 
 from exceptions import ScraperException
-from scrape.util import random_sleep
+from scrape.util import random_sleep, get_config
 
 
 class ICScraper(object):
@@ -32,27 +32,6 @@ class ICScraper(object):
                                '504 Error': 'we\'ve encountered an error.',
                                '500 Error': 'HTTP ERROR 500',
                                '502 Error': 'The web server reported a bad gateway error.'}
-
-    @staticmethod
-    def _get_config(config_path):
-        required_keys = {'email', 'pass'}
-        config_path = os.path.expanduser(config_path)
-
-        if not os.path.isfile(config_path):
-            raise ScraperException('Config is not a valid file: {}'.format(config_path))
-
-        try:
-            with open(config_path, 'r') as f:
-                config_dict = json.loads(f.read())
-        except (OSError, ValueError) as e:
-            raise ScraperException('Unable to load JSON from file: {}. Error: {}'.format(config_path, e))
-
-        for key in required_keys:
-            if key not in config_dict.keys():
-                raise ScraperException('Config is missing required key: {}'.format(key))
-
-        print('Config successfully loaded from: {}'.format(config_path))
-        return config_dict
 
     def save_session_cookies(self, file_path):
         pickle.dump(self._driver.get_cookies(), open(file_path, 'wb'))
@@ -127,7 +106,7 @@ class ICScraper(object):
         """
         # This needs to be a fair bit of time because these captchas are FUCKING IMPOSSIBLE TO SOLVE
         captcha_timeout = 360
-        config = self._get_config(config_path=config_path)
+        config = get_config(config_path=config_path)
         login_url = self.root + '/login'
         try:
             self._load_page(login_url)
