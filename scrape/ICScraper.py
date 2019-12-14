@@ -9,7 +9,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import NoSuchElementException, InvalidArgumentException, WebDriverException
 
 from exceptions import ScraperException
-from util import random_sleep
+from scrape.util import random_sleep
 
 
 class ICScraper(object):

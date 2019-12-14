@@ -9,12 +9,12 @@ from re import compile
 
 from selenium.common.exceptions import NoSuchWindowException
 
-from Caffeine import Caffeine
-from ICScraper import ICScraper
+from scrape.Caffeine import Caffeine
+from scrape.ICScraper import ICScraper
 from SheetConfig import SheetConfig
 from SheetManager import SheetManager
 from exceptions import ScraperException, SheetConfigException
-from util import random_sleep
+from scrape.util import random_sleep
 
 SEP = '-' * 60
 
@@ -114,7 +114,7 @@ if __name__ == '__main__':
     failed_count = 0
 
     # Seconds between searches, randomized to hopefully throw off bot-detection
-    wait_range_between_rows = (30, 600)
+    wait_range_between_rows = (30, 450)  # 0.5 - 7.5 minutes
     wait_range_between_report_loads = (10, 45)
 
     # Not sure if there's actually any benefit to this
@@ -213,14 +213,16 @@ if __name__ == '__main__':
             sheet_writer = DictWriter(out, fieldnames=output_columns)
             sheet_writer.writeheader()
 
-            # Iterate through rows in the spreadsheet
             last_row_was_duplicate = False
+            found_results = False
+
+            # Iterate through rows in the spreadsheet
             for row in sheet_reader:
 
                 row_count += 1
-                found_results = False
 
                 # Skip already-scraped rows
+                # TODO: Skip rows marked 'skip', obviously
                 if 'scraped' in row.keys() and (bool(row['scraped']) is True or row['scraped'].lower == 'failed'):
                     if verbose:
                         print('Skipping previously scraped row. Index: {}'.format(row_count))
@@ -230,10 +232,14 @@ if __name__ == '__main__':
                 print(SEP)
 
                 # Randomized wait in between searches
-                # TODO: add a small wait time after 0 matching results found for a row
                 if scraped_count > 0 and not last_row_was_duplicate:
-                    random_sleep(wait_range_between_rows, verbose=verbose)
+                    if found_results:
+                        random_sleep(wait_range_between_rows, verbose=verbose)
+                    else:
+                        # A shorter wait time if 0 matching results were found for a row
+                        random_sleep(wait_range_between_report_loads, verbose=verbose)
 
+                found_results = False
                 output_row = deepcopy(row)
                 grouped_contact_dict = dict()
 
