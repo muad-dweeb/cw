@@ -9,12 +9,12 @@ from re import compile
 
 from selenium.common.exceptions import NoSuchWindowException
 
-from Caffeine import Caffeine
-from ICScraper import ICScraper
+from scrape.Caffeine import Caffeine
+from scrape.ICScraper import ICScraper
 from SheetConfig import SheetConfig
 from SheetManager import SheetManager
 from exceptions import ScraperException, SheetConfigException
-from util import random_sleep
+from scrape.util import random_sleep
 
 SEP = '-' * 60
 
