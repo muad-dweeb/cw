@@ -9,6 +9,7 @@ from re import compile
 
 from selenium.common.exceptions import NoSuchWindowException
 
+# from scrape.BVScraper import BVScraper
 from scrape.Caffeine import Caffeine
 from scrape.ICScraper import ICScraper
 from SheetConfig import SheetConfig
@@ -99,12 +100,15 @@ if __name__ == '__main__':
     parser.add_argument('--limit-minutes', required=False, type=int, help='Number of minutes to limit scraping to')
     parser.add_argument('--verbose', default=False, help='Increase print verbosity', action='store_true')
     parser.add_argument('--auto-close', default=False, help='Close the browser when finished', action='store_true')
+    parser.add_argument('--site', required=True, choices={'ic', 'fps'},
+                        help='The site to scrape: instantcheckmate.com (ic) or fastpeoplesearch.com (fps)')
     args = parser.parse_args()
 
     limit_rows = args.limit_rows
     limit_minutes = args.limit_minutes
     verbose = args.verbose
     auto_close = args.auto_close
+    site = args.site
 
     config = None
     scraper = None
@@ -172,8 +176,17 @@ if __name__ == '__main__':
                 print('Config: {}'.format(args.config))
                 sys.exit()
 
-        scraper = ICScraper(wait_range=wait_range_between_report_loads, time_limit=time_limit, verbose=verbose)
-        scraper.manual_login(cookie_file)
+        if site == 'ic':
+            scraper = ICScraper(wait_range=wait_range_between_report_loads, time_limit=time_limit, verbose=verbose)
+            scraper.manual_login(cookie_file)
+
+        # elif site == 'bv':
+        #     scraper = BVScraper(wait_range=wait_range_between_report_loads, time_limit=time_limit, verbose=verbose)
+        #     scraper.auto_login(cookie_file)
+
+        else:
+            print('Site \'{}\' not supported. Exiting.'.format(site))
+            sys.exit()
 
         with open(out_file, 'w') as out:
             print('Writing to:     {}'.format(out_file))
