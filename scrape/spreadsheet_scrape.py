@@ -270,7 +270,6 @@ if __name__ == '__main__':
                         random_sleep(wait_range_between_rows, verbose=verbose)
                     else:
                         # A shorter wait time if 0 matching results were found for a row
-                        # TODO: this is not working for single Owner 0-result searches!
                         random_sleep(wait_range_between_report_loads, verbose=verbose)
 
                 found_results = False
@@ -341,6 +340,8 @@ if __name__ == '__main__':
                     last_row_was_duplicate = True
                     if verbose:
                         print('\t  Skipping duplicate row...')
+                else:
+                    last_row_was_duplicate = False
 
                 for contact_index, contact_info in grouped_contact_dict.items():
                     phone_numbers = list(contact_info['phone_numbers'])
