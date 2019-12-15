@@ -224,48 +224,5 @@ class ICScraper(Scraper):
 
         return contact_dict
 
-    def get_all_info(self, first, last, city, state):
-        """
-        Wrapper for find() and get_info() if all results are desirable. De-duping built-in.
-        :return: dict
-        """
-        full_info = {'phone_numbers': set(), 'email_addresses': set()}
-        scrape_index = 0
-
-        search_results = self.find(first=first, last=last, city=city, state=state, verbose=True)
-        print('{} matching results found.'.format(len(search_results)))
-
-        # NOTE: New elements are generated each time the search page is loaded, rendering all previous elements stale
-        while scrape_index < len(search_results):
-
-            # Opens Report and generates info dict
-            single_info = self.get_info(search_result=search_results[scrape_index])
-
-            if type(single_info) == str and single_info in self._error_strings.keys():
-
-                # Error page encountered; reload the search results page and try once more
-                search_results = self.find(first=first, last=last, city=city, state=state)
-                single_info = self.get_info(search_result=search_results[scrape_index])
-
-            for number, number_type in single_info['phone_numbers'].items():
-                full_info['phone_numbers'].add('{} ({})'.format(number, number_type))
-
-            for value in single_info['email_addresses']:
-                full_info['email_addresses'].add(value)
-
-            # Don't wait after the last report; there will be a wait when the next row starts
-            if scrape_index < len(search_results) - 1:
-
-                # It takes a human some time to do anything with the report's information
-                random_sleep(self._wait_range, verbose=self._verbose)
-
-            # Navigate back to search results page
-            search_results = self.find(first=first, last=last, city=city, state=state)
-
-            scrape_index += 1
-
-        self.last_contact_info = full_info
-
-        return full_info
 
 
