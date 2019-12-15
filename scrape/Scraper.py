@@ -86,7 +86,7 @@ class Scraper(object):
             if type(single_info) == str and single_info in self._error_strings.keys():
 
                 # Error page encountered; reload the search results page and try once more
-                search_results = self.find(first=first, last=last, city=city, state=state)
+                search_results = self.find(first=first, last=last, city=city, state=state, verbose=False)
                 single_info = self.get_info(search_result=search_results[scrape_index])
 
             for number, number_type in single_info['phone_numbers'].items():
@@ -101,8 +101,8 @@ class Scraper(object):
                 # It takes a human some time to do anything with the report's information
                 random_sleep(self._wait_range, verbose=self._verbose)
 
-            # Navigate back to search results page
-            search_results = self.find(first=first, last=last, city=city, state=state)
+            # Navigate back to search results page (and reload elements)
+            search_results = self.find(first=first, last=last, city=city, state=state, verbose=False)
 
             scrape_index += 1
 
