@@ -211,10 +211,11 @@ if __name__ == '__main__':
 
             contact_columns = {'phone': list(), 'email': list()}
 
-            index = 0
-            while index < column_dict['count']:
+            column_index = 0
+            while column_index < column_dict['count']:
 
-                column_prefix = path.commonprefix([column_dict['first_names'][index], column_dict['last_names'][index]])
+                column_prefix = path.commonprefix([column_dict['first_names'][column_index],
+                                                   column_dict['last_names'][column_index]])
                 phone_column = '{} Phone'.format(column_prefix)
                 email_column = '{} Email'.format(column_prefix)
 
@@ -226,7 +227,7 @@ if __name__ == '__main__':
                     if contact_column not in output_columns:
                         output_columns.append(contact_column)
 
-                index += 1
+                column_index += 1
 
             # 'scraped' column is a flag that simply confirms that a given row was previously auto-scraped
             if 'scraped' not in output_columns:
@@ -236,6 +237,8 @@ if __name__ == '__main__':
             sheet_writer = DictWriter(out, fieldnames=output_columns)
             sheet_writer.writeheader()
 
+            last_row = None
+            last_search_was_duplicate = False
             last_row_was_duplicate = False
             found_results = False
 
@@ -243,6 +246,13 @@ if __name__ == '__main__':
             for row in sheet_reader:
 
                 row_count += 1
+
+                # Hacky crap
+                # TODO: something about this flag is causing the first row to always say "Skipping duplicate row"
+                if row_count == 1:
+                    duplicate_row = False
+                else:
+                    duplicate_row = True
 
                 # Skip already-scraped rows
                 # TODO: Skip rows marked 'skip', obviously
@@ -255,11 +265,12 @@ if __name__ == '__main__':
                 print(SEP)
 
                 # Randomized wait in between searches
-                if scraped_count > 0 and not last_row_was_duplicate:
+                if scraped_count > 0 and not last_search_was_duplicate and not last_row_was_duplicate:
                     if found_results:
                         random_sleep(wait_range_between_rows, verbose=verbose)
                     else:
                         # A shorter wait time if 0 matching results were found for a row
+                        # TODO: this is not working for single Owner 0-result searches!
                         random_sleep(wait_range_between_report_loads, verbose=verbose)
 
                 found_results = False
@@ -273,6 +284,22 @@ if __name__ == '__main__':
                     last_name = row[column_dict['last_names'][index]].strip().upper()
                     city = row[column_dict['cities'][index]].strip().upper()
                     state = row[column_dict['states'][index]].strip().upper()
+
+                    # Skip duplicate rows
+                    if last_row is not None:
+                        if first_name == last_row[column_dict['first_names'][index]].strip().upper() and \
+                            last_name == last_row[column_dict['last_names'][index]].strip().upper() and \
+                            city == last_row[column_dict['cities'][index]].strip().upper() and \
+                            state == last_row[column_dict['states'][index]].strip().upper():
+                            output_row[contact_columns['phone'][contact_index]] = \
+                                last_row[contact_columns['phone'][contact_index]]
+                            output_row[contact_columns['email'][contact_index]] = \
+                                last_row[contact_columns['email'][contact_index]]
+                            index += 1
+                            found_results = True
+                            continue
+                        else:
+                            duplicate_row = False
 
                     grouped_contact_dict[index] = {'phone_numbers': list(), 'email_addresses': list()}
 
@@ -296,12 +323,12 @@ if __name__ == '__main__':
                             contact_info = scraper.get_all_info(first=first_name, last=last_name, city=city, state=state)
 
                             last_search = deepcopy(current_search)
-                            last_row_was_duplicate = False
+                            last_search_was_duplicate = False
 
                         else:
                             if verbose:
                                 print('\t  Skipping duplicate search...')
-                                last_row_was_duplicate = True
+                                last_search_was_duplicate = True
 
                             # Reuse the last scraped contact info
                             contact_info = scraper.last_contact_info
@@ -309,6 +336,11 @@ if __name__ == '__main__':
                         grouped_contact_dict[index] = contact_info
 
                     index += 1
+
+                if duplicate_row:
+                    last_row_was_duplicate = True
+                    if verbose:
+                        print('\t  Skipping duplicate row...')
 
                 for contact_index, contact_info in grouped_contact_dict.items():
                     phone_numbers = list(contact_info['phone_numbers'])
@@ -342,6 +374,8 @@ if __name__ == '__main__':
                 if time_limit is not None and datetime.now() >= time_limit:
                     print('Minute limit ({}) reached!'.format(limit_minutes))
                     break
+
+                last_row = output_row
 
     except ScraperException as e:
         print('Scrape failed. Error: {}'.format(e))
