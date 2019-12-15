@@ -120,7 +120,7 @@ if __name__ == '__main__':
 
     # Seconds between searches, randomized to hopefully throw off bot-detection
     if site == 'fps':
-        wait_range_between_rows = (30, 120)
+        wait_range_between_rows = (20, 120)
         wait_range_between_report_loads = (5, 30)
     else:
         wait_range_between_rows = (30, 450)  # 0.5 - 7.5 minutes
