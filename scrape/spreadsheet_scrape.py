@@ -313,11 +313,10 @@ if __name__ == '__main__':
 
                         if current_search != last_search:
                             if verbose:
-                                print('Search: {} {} , {} {}'.format(first_name, last_name, city, state))
+                                print('Search: {} {}, {} {}'.format(first_name, last_name, city, state))
 
-                            # Short wait in between Person1 and Person2 in the same row
-                            if index > 0:
-                                random_sleep(wait_range_between_report_loads, verbose=True)
+                            # Short wait in between all report loads
+                            random_sleep(wait_range_between_report_loads, verbose=True)
 
                             # Use the current search params to scrape contact info
                             contact_info = scraper.get_all_info(first=first_name, last=last_name, city=city, state=state)
