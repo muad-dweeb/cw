@@ -46,14 +46,29 @@ class FpsScraper(Scraper):
             raise ScraperException('Failed to load search page: {}. Error: {}'.format(search_url, e))
 
         results_list = self._driver.find_elements_by_class_name('card-block')
+        for relevant_result in self._relevant_search_matches(results_list, first, last, city, state, verbose=verbose):
+            matches.append(relevant_result)
+
+        # Nothing found, slightly loosen the matching criteria and try again
+        if len(matches) == 0:
+            for relevant_result in self._relevant_search_matches(results_list, first, last, city, state, fuzzy=True,
+                                                                 verbose=False):
+                matches.append(relevant_result)
+
+        # Free memory
+        del results_list
+
+        return matches
+
+    def _relevant_search_matches(self, results_list, first, last, city, state, fuzzy=False, verbose=False):
         for result in results_list:
-            found_full = None
             found_age = None
+            found_full = None
 
             result_text = result.text.split('\n')
 
-            # The first line is always the simplified name, just throw it away
-            result_text.pop(0)
+            # The first line is always the simplified name (in some cases it may be the only one)
+            found_simple_name = result_text.pop(0)
 
             # The second line is sometimes an alias, throw this away too
             if result_text[0].lower().startswith('goes by'):
@@ -65,32 +80,37 @@ class FpsScraper(Scraper):
             found_state = location_components[1]
 
             for line in result_text:
+                # Stop looking for them if we already found them
+                if found_age is not None and found_full is not None:
+                    break
                 if line.startswith('Age:'):
                     found_age = line.lstrip('Age: ').strip()
                 elif line.startswith('Full Name:'):
                     found_full = line.lstrip('Full Name: ').strip()
 
             # Don't call dead people, they aren't likely to answer
-            if 'deceased' in found_age.lower():
+            if found_age is not None and 'deceased' in found_age.lower():
                 continue
 
-            if not self._validate_result_name(first, last, found_full):
+            # Allow using the simple header name in lieu of no Full Name existing, if fuzzy is allowed
+            if found_full is None:
+                if fuzzy:
+                    found_full = found_simple_name
+                else:
+                    continue
+
+            elif not self._validate_result_name(first, last, found_full):
                 continue
 
             # Validation against canonical location params
             if found_city.lower() != city.lower() or found_state.lower() != state.lower():
                 continue
 
-            if verbose:
+            if verbose and not fuzzy:
                 print('Result: {}, Age: {}, City: {}, State: {}'.format(found_full, found_age, found_city, found_state))
 
             # Only keep 100% input matches
-            matches.append(result)
-
-        # Free memory
-        del results_list
-
-        return matches
+            yield result
 
     def _has_next_page(self):
         pagination_links = self._driver.find_element_by_class_name('pagination-links')
@@ -176,10 +196,13 @@ class FpsScraper(Scraper):
         self.reports_loaded += 1
 
         # Primary phone section (max 8 before 'Show More...')
-        phone_card = main_report.find_elements_by_class_name('detail-box-phone')[0]
-        phone_numbers = self._parse_phone_numbers(phone_text_list=phone_card.text.split('\n'))
-        for key, value in phone_numbers.items():
-            contact_dict['phone_numbers'][key] = value
+        try:
+            phone_card = main_report.find_element_by_class_name('detail-box-phone')
+            phone_numbers = self._parse_phone_numbers(phone_text_list=phone_card.text.split('\n'))
+            for key, value in phone_numbers.items():
+                contact_dict['phone_numbers'][key] = value
+        except NoSuchElementException:
+            pass
 
         # Paginated phone section - TODO: THIS IS BROKEN, phone_card.text is always ''; where the hell are the numbers?
         try:
@@ -191,10 +214,13 @@ class FpsScraper(Scraper):
             pass
 
         # Primary email section
-        email_card = main_report.find_elements_by_class_name('detail-box-email')[0]
-        for row in email_card.text.split('\n'):
-            if '@' in row:
-                contact_dict['email_addresses'].append(row)
+        try:
+            email_card = main_report.find_element_by_class_name('detail-box-email')
+            for row in email_card.text.split('\n'):
+                if '@' in row:
+                    contact_dict['email_addresses'].append(row)
+        except NoSuchElementException:
+            pass
 
         return contact_dict
 
