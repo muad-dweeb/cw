@@ -11,6 +11,7 @@ from selenium.common.exceptions import NoSuchWindowException
 
 # from scrape.BVScraper import BVScraper
 from scrape.Caffeine import Caffeine
+from scrape.FpsScraper import FpsScraper
 from scrape.ICScraper import ICScraper
 from SheetConfig import SheetConfig
 from SheetManager import SheetManager
@@ -118,11 +119,16 @@ if __name__ == '__main__':
     failed_count = 0
 
     # Seconds between searches, randomized to hopefully throw off bot-detection
-    wait_range_between_rows = (30, 450)  # 0.5 - 7.5 minutes
-    wait_range_between_report_loads = (10, 45)
+    if site == 'fps':
+        wait_range_between_rows = (30, 120)
+        wait_range_between_report_loads = (5, 30)
+    else:
+        wait_range_between_rows = (30, 450)  # 0.5 - 7.5 minutes
+        wait_range_between_report_loads = (10, 45)
 
     # Not sure if there's actually any benefit to this
-    cookie_file = path.join(path.dirname(path.abspath(__file__)), 'data', '.cookie_jar.pkl')
+    cookie_file = path.join(path.dirname(path.dirname(path.abspath(__file__))),
+                            'data', '.{}_cookie_jar.pkl'.format(site))
 
     # Don't let the computer go to sleep, else it will kill the scraper
     pid = getpid()
@@ -183,6 +189,10 @@ if __name__ == '__main__':
         # elif site == 'bv':
         #     scraper = BVScraper(wait_range=wait_range_between_report_loads, time_limit=time_limit, verbose=verbose)
         #     scraper.auto_login(cookie_file)
+
+        elif site == 'fps':
+            scraper = FpsScraper(wait_range=wait_range_between_report_loads, time_limit=time_limit, verbose=verbose)
+            scraper.auto_login(cookie_file)
 
         else:
             print('Site \'{}\' not supported. Exiting.'.format(site))
