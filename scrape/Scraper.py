@@ -96,7 +96,7 @@ class Scraper(object):
                 full_info['email_addresses'].add(value)
 
             # Don't wait after the last report; there will be a wait when the next row starts
-            if scrape_index < len(search_results) - 1:
+            if scrape_index == 0 or scrape_index < len(search_results) - 1:
 
                 # It takes a human some time to do anything with the report's information
                 random_sleep(self._wait_range, verbose=self._verbose)
