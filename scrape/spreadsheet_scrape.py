@@ -316,7 +316,8 @@ if __name__ == '__main__':
                                 print('Search: {} {}, {} {}'.format(first_name, last_name, city, state))
 
                             # Short wait in between all report loads
-                            random_sleep(wait_range_between_report_loads, verbose=True)
+                            if scraped_count > 1:
+                                random_sleep(wait_range_between_report_loads, verbose=True)
 
                             # Use the current search params to scrape contact info
                             contact_info = scraper.get_all_info(first=first_name, last=last_name, city=city, state=state)
