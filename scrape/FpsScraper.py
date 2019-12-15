@@ -175,18 +175,42 @@ class FpsScraper(Scraper):
         print('Report load successful')
         self.reports_loaded += 1
 
+        # Primary phone section (max 8 before 'Show More...')
         phone_card = main_report.find_elements_by_class_name('detail-box-phone')[0]
-        for row in phone_card.text.split('\n'):
+        phone_numbers = self._parse_phone_numbers(phone_text_list=phone_card.text.split('\n'))
+        for key, value in phone_numbers.items():
+            contact_dict['phone_numbers'][key] = value
+
+        # Paginated phone section - TODO: THIS IS BROKEN, phone_card.text is always ''; where the hell are the numbers?
+        try:
+            phone_card = main_report.find_element_by_id('collapsed-phones')
+            phone_numbers = self._parse_phone_numbers(phone_text_list=phone_card.text.split('\n'))
+            for key, value in phone_numbers.items():
+                contact_dict['phone_numbers'][key] = value
+        except NoSuchElementException:
+            pass
+
+        # Primary email section
+        email_card = main_report.find_elements_by_class_name('detail-box-email')[0]
+        for row in email_card.text.split('\n'):
+            if '@' in row:
+                contact_dict['email_addresses'].append(row)
+
+        return contact_dict
+
+    @staticmethod
+    def _parse_phone_numbers(phone_text_list):
+        parsed_numbers = dict()
+        for row in phone_text_list:
+            if row == '' or 'show more' in row.lower():
+                continue
+
             phone_number, phone_type = row.split(' - ')
 
             # Skip fax numbers
             if phone_type.lower() == 'fax':
                 continue
 
-            contact_dict['phone_numbers'][phone_number] = phone_type
+            parsed_numbers[phone_number] = phone_type
 
-        email_card = main_report.find_elements_by_class_name('detail-box-email')[0]
-        for row in email_card.text.split('\n'):
-            contact_dict['email_addresses'].append(row)
-
-        return contact_dict
+        return parsed_numbers
