@@ -120,8 +120,8 @@ if __name__ == '__main__':
 
     # Seconds between searches, randomized to hopefully throw off bot-detection
     if site == 'fps':
-        wait_range_between_rows = (20, 120)
-        wait_range_between_report_loads = (5, 30)
+        wait_range_between_rows = (15, 90)
+        wait_range_between_report_loads = (5, 15)
     else:
         wait_range_between_rows = (30, 450)  # 0.5 - 7.5 minutes
         wait_range_between_report_loads = (10, 45)
@@ -255,12 +255,14 @@ if __name__ == '__main__':
                     duplicate_row = True
 
                 # Skip already-scraped rows
-                # TODO: Skip rows marked 'skip', obviously
-                if 'scraped' in row.keys() and (bool(row['scraped']) is True or row['scraped'].lower == 'failed'):
+                if 'scraped' in row.keys() and (bool(row['scraped']) is True or row['scraped'].lower() == 'failed'):
                     if verbose:
                         print('Skipping previously scraped row. Index: {}'.format(row_count))
                     sheet_writer.writerow(row)
                     continue
+                elif 'scraped' in row.keys() and row['scraped'].lower() == 'skip':
+                    if verbose:
+                        print('Skipping row as instructed. Index: {}'.format(row_count))
 
                 print(SEP)
 
