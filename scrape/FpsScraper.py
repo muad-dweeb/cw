@@ -74,7 +74,9 @@ class FpsScraper(Scraper):
             if result_text[0].lower().startswith('goes by'):
                 result_text.pop(0)
 
-            # The next line SHOULD be the location
+            # The next line SHOULD be the location (in rare occasions it does not exist)
+            if ', ' not in result_text[0]:
+                continue
             location_components = result_text.pop(0).strip().split(', ')
             found_city = location_components[0]
             found_state = location_components[1]
