@@ -255,14 +255,16 @@ if __name__ == '__main__':
                     duplicate_row = True
 
                 # Skip already-scraped rows
-                if 'scraped' in row.keys() and (bool(row['scraped']) is True or row['scraped'].lower() == 'failed'):
-                    if verbose:
-                        print('Skipping previously scraped row. Index: {}'.format(row_count))
-                    sheet_writer.writerow(row)
-                    continue
-                elif 'scraped' in row.keys() and row['scraped'].lower() == 'skip':
-                    if verbose:
-                        print('Skipping row as instructed. Index: {}'.format(row_count))
+                if 'scraped' in row.keys() and row['scraped'] is not None:
+                    if bool(row['scraped']) is True or row['scraped'].lower() == 'failed':
+                        if verbose:
+                            print('Skipping previously scraped row. Index: {}'.format(row_count))
+                        sheet_writer.writerow(row)
+                        continue
+                    elif row['scraped'].lower() == 'skip':
+                        if verbose:
+                            print('Skipping row as instructed. Index: {}'.format(row_count))
+                        continue
 
                 print(SEP)
 
