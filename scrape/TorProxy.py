@@ -29,9 +29,9 @@ def check_ip(driver):
     if '"origin"' not in driver.page_source:
         raise TorProxyException('IP check page load failed')
 
-    ip_match = re.findall(pattern='\\d+\\..+\\.\\d+', string=driver.page_source)
+    ip_match = re.findall(pattern='(\\d+\\..+\\.\\d+),', string=driver.page_source)
     if len(ip_match) > 0:
-        ip = ip_match[0].split(',')[0]
+        ip = ip_match[0]
     else:
         raise TorProxyException('No IP address parsed from page: {}'.format(url))
 
@@ -90,11 +90,12 @@ def test_tor_proxy():
 
     options = webdriver.ChromeOptions()
     # options.add_argument('headless')
-    options.add_argument('window-size=1881x1280')
+    options.add_argument("--window-size=420,420")
 
     # Without proxy
     driver = webdriver.Chrome(options=options)
     normal_ip = check_ip(driver)
+    driver.close()
     print('Normal IP: {}'.format(normal_ip))
 
     # With proxy
@@ -102,6 +103,7 @@ def test_tor_proxy():
     proxy.start()
     driver = webdriver.Chrome(options=options, desired_capabilities=proxy.capabilities)
     proxy_ip = check_ip(driver)
+    driver.close()
     print('Proxy IP: {}'.format(proxy_ip))
     proxy.stop()
 
