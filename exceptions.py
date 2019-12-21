@@ -8,3 +8,7 @@ class SheetConfigException(BaseException):
 
 class SheetManagerException(BaseException):
     pass
+
+
+class TorProxyException(BaseException):
+    pass
