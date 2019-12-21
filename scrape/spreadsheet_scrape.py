@@ -9,7 +9,9 @@ from re import compile
 
 from selenium.common.exceptions import NoSuchWindowException
 
+# from scrape.BVScraper import BVScraper
 from scrape.Caffeine import Caffeine
+from scrape.FpsScraper import FpsScraper
 from scrape.ICScraper import ICScraper
 from SheetConfig import SheetConfig
 from SheetManager import SheetManager
@@ -99,12 +101,15 @@ if __name__ == '__main__':
     parser.add_argument('--limit-minutes', required=False, type=int, help='Number of minutes to limit scraping to')
     parser.add_argument('--verbose', default=False, help='Increase print verbosity', action='store_true')
     parser.add_argument('--auto-close', default=False, help='Close the browser when finished', action='store_true')
+    parser.add_argument('--site', required=True, choices={'ic', 'fps'},
+                        help='The site to scrape: instantcheckmate.com (ic) or fastpeoplesearch.com (fps)')
     args = parser.parse_args()
 
     limit_rows = args.limit_rows
     limit_minutes = args.limit_minutes
     verbose = args.verbose
     auto_close = args.auto_close
+    site = args.site
 
     config = None
     scraper = None
@@ -114,11 +119,16 @@ if __name__ == '__main__':
     failed_count = 0
 
     # Seconds between searches, randomized to hopefully throw off bot-detection
-    wait_range_between_rows = (30, 450)  # 0.5 - 7.5 minutes
-    wait_range_between_report_loads = (10, 45)
+    if site == 'fps':
+        wait_range_between_rows = (15, 90)
+        wait_range_between_report_loads = (5, 15)
+    else:
+        wait_range_between_rows = (30, 450)  # 0.5 - 7.5 minutes
+        wait_range_between_report_loads = (10, 45)
 
     # Not sure if there's actually any benefit to this
-    cookie_file = path.join(path.dirname(path.abspath(__file__)), 'data', '.cookie_jar.pkl')
+    cookie_file = path.join(path.dirname(path.dirname(path.abspath(__file__))),
+                            'data', '.{}_cookie_jar.pkl'.format(site))
 
     # Don't let the computer go to sleep, else it will kill the scraper
     pid = getpid()
@@ -172,8 +182,21 @@ if __name__ == '__main__':
                 print('Config: {}'.format(args.config))
                 sys.exit()
 
-        scraper = ICScraper(wait_range=wait_range_between_report_loads, time_limit=time_limit, verbose=verbose)
-        scraper.manual_login(cookie_file)
+        if site == 'ic':
+            scraper = ICScraper(wait_range=wait_range_between_report_loads, time_limit=time_limit, verbose=verbose)
+            scraper.manual_login(cookie_file)
+
+        # elif site == 'bv':
+        #     scraper = BVScraper(wait_range=wait_range_between_report_loads, time_limit=time_limit, verbose=verbose)
+        #     scraper.auto_login(cookie_file)
+
+        elif site == 'fps':
+            scraper = FpsScraper(wait_range=wait_range_between_report_loads, time_limit=time_limit, verbose=verbose)
+            scraper.auto_login(cookie_file)
+
+        else:
+            print('Site \'{}\' not supported. Exiting.'.format(site))
+            sys.exit()
 
         with open(out_file, 'w') as out:
             print('Writing to:     {}'.format(out_file))
@@ -188,10 +211,11 @@ if __name__ == '__main__':
 
             contact_columns = {'phone': list(), 'email': list()}
 
-            index = 0
-            while index < column_dict['count']:
+            column_index = 0
+            while column_index < column_dict['count']:
 
-                column_prefix = path.commonprefix([column_dict['first_names'][index], column_dict['last_names'][index]])
+                column_prefix = path.commonprefix([column_dict['first_names'][column_index],
+                                                   column_dict['last_names'][column_index]])
                 phone_column = '{} Phone'.format(column_prefix)
                 email_column = '{} Email'.format(column_prefix)
 
@@ -203,7 +227,7 @@ if __name__ == '__main__':
                     if contact_column not in output_columns:
                         output_columns.append(contact_column)
 
-                index += 1
+                column_index += 1
 
             # 'scraped' column is a flag that simply confirms that a given row was previously auto-scraped
             if 'scraped' not in output_columns:
@@ -213,6 +237,8 @@ if __name__ == '__main__':
             sheet_writer = DictWriter(out, fieldnames=output_columns)
             sheet_writer.writeheader()
 
+            last_row = None
+            last_search_was_duplicate = False
             last_row_was_duplicate = False
             found_results = False
 
@@ -221,18 +247,29 @@ if __name__ == '__main__':
 
                 row_count += 1
 
+                # Hacky crap
+                # TODO: something about this flag is causing the first row to always say "Skipping duplicate row"
+                if row_count == 1:
+                    duplicate_row = False
+                else:
+                    duplicate_row = True
+
                 # Skip already-scraped rows
-                # TODO: Skip rows marked 'skip', obviously
-                if 'scraped' in row.keys() and (bool(row['scraped']) is True or row['scraped'].lower == 'failed'):
-                    if verbose:
-                        print('Skipping previously scraped row. Index: {}'.format(row_count))
-                    sheet_writer.writerow(row)
-                    continue
+                if 'scraped' in row.keys() and row['scraped'] is not None:
+                    if bool(row['scraped']) is True or row['scraped'].lower() == 'failed':
+                        if verbose:
+                            print('Skipping previously scraped row. Index: {}'.format(row_count))
+                        sheet_writer.writerow(row)
+                        continue
+                    elif row['scraped'].lower() == 'skip':
+                        if verbose:
+                            print('Skipping row as instructed. Index: {}'.format(row_count))
+                        continue
 
                 print(SEP)
 
                 # Randomized wait in between searches
-                if scraped_count > 0 and not last_row_was_duplicate:
+                if scraped_count > 0 and not last_search_was_duplicate and not last_row_was_duplicate:
                     if found_results:
                         random_sleep(wait_range_between_rows, verbose=verbose)
                     else:
@@ -251,6 +288,22 @@ if __name__ == '__main__':
                     city = row[column_dict['cities'][index]].strip().upper()
                     state = row[column_dict['states'][index]].strip().upper()
 
+                    # Skip duplicate rows
+                    if last_row is not None:
+                        if first_name == last_row[column_dict['first_names'][index]].strip().upper() and \
+                            last_name == last_row[column_dict['last_names'][index]].strip().upper() and \
+                            city == last_row[column_dict['cities'][index]].strip().upper() and \
+                            state == last_row[column_dict['states'][index]].strip().upper():
+                            output_row[contact_columns['phone'][contact_index]] = \
+                                last_row[contact_columns['phone'][contact_index]]
+                            output_row[contact_columns['email'][contact_index]] = \
+                                last_row[contact_columns['email'][contact_index]]
+                            index += 1
+                            found_results = True
+                            continue
+                        else:
+                            duplicate_row = False
+
                     grouped_contact_dict[index] = {'phone_numbers': list(), 'email_addresses': list()}
 
                     # Skip empty column groups
@@ -263,18 +316,22 @@ if __name__ == '__main__':
 
                         if current_search != last_search:
                             if verbose:
-                                print('Search: {} {} , {} {}'.format(first_name, last_name, city, state))
+                                print('Search: {} {}, {} {}'.format(first_name, last_name, city, state))
+
+                            # Short wait in between all report loads
+                            if scraped_count > 1:
+                                random_sleep(wait_range_between_report_loads, verbose=True)
 
                             # Use the current search params to scrape contact info
                             contact_info = scraper.get_all_info(first=first_name, last=last_name, city=city, state=state)
 
                             last_search = deepcopy(current_search)
-                            last_row_was_duplicate = False
+                            last_search_was_duplicate = False
 
                         else:
                             if verbose:
                                 print('\t  Skipping duplicate search...')
-                                last_row_was_duplicate = True
+                                last_search_was_duplicate = True
 
                             # Reuse the last scraped contact info
                             contact_info = scraper.last_contact_info
@@ -282,6 +339,13 @@ if __name__ == '__main__':
                         grouped_contact_dict[index] = contact_info
 
                     index += 1
+
+                if duplicate_row:
+                    last_row_was_duplicate = True
+                    if verbose:
+                        print('\t  Skipping duplicate row...')
+                else:
+                    last_row_was_duplicate = False
 
                 for contact_index, contact_info in grouped_contact_dict.items():
                     phone_numbers = list(contact_info['phone_numbers'])
@@ -315,6 +379,8 @@ if __name__ == '__main__':
                 if time_limit is not None and datetime.now() >= time_limit:
                     print('Minute limit ({}) reached!'.format(limit_minutes))
                     break
+
+                last_row = output_row
 
     except ScraperException as e:
         print('Scrape failed. Error: {}'.format(e))
