@@ -15,10 +15,15 @@ class ICScraper(Scraper):
     def __init__(self, wait_range, time_limit=None, verbose=False):
         super().__init__(wait_range, time_limit, verbose)
         self.root = 'https://www.instantcheckmate.com/dashboard'
-        self._error_strings = {'404 Error': 'Uh Oh! Looks like something went wrong.',
-                               '504 Error': 'we\'ve encountered an error.',
-                               '500 Error': 'HTTP ERROR 500',
-                               '502 Error': 'The web server reported a bad gateway error.'}
+
+        site_specific_error_strings = {'404 Error': 'Uh Oh! Looks like something went wrong.',
+                                       '504 Error': 'we\'ve encountered an error.',
+                                       '500 Error': 'HTTP ERROR 500',
+                                       '502 Error': 'The web server reported a bad gateway error.'}
+
+        # Add to the base class error dict
+        for key, value in site_specific_error_strings.items():
+            self._error_strings[key] = value
 
     def manual_login(self, cookie_file):
         """
