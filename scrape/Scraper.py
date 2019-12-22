@@ -5,14 +5,22 @@ from selenium import webdriver
 from selenium.common.exceptions import InvalidArgumentException, WebDriverException
 
 from exceptions import ScraperException
+from scrape.TorProxy import check_ip, TorProxy
 from scrape.util import random_sleep
 
 
 class Scraper(object):
 
-    def __init__(self, wait_range, time_limit=None, verbose=False):
+    def __init__(self, wait_range, time_limit=None, use_proxy=False, verbose=False):
+
         self._driver = webdriver.Chrome()
         print('Chrome spawned at {}'.format(datetime.now()))
+
+        self.ip = check_ip(self._driver)
+        print('Your IP: {}'.format(self.ip))
+
+        if use_proxy:
+            self._driver = self._spawn_driver_with_proxy()
 
         self.last_contact_info = None
         # Seconds between searches, randomized to hopefully throw off bot-detection
@@ -23,8 +31,27 @@ class Scraper(object):
         # Internal metric
         self.reports_loaded = 0
 
-        # This needs to be implemented in the derived class, as the values will be unique to each site
-        self._error_strings = dict()
+        # Most error messages will be specific to individual sites. Add those in each derived class
+        self._error_strings = {'1020 Error': 'used Cloudflare to restrict access'}
+
+    def _spawn_driver_with_proxy(self):
+        proxy = TorProxy()
+        proxy.start()
+        proxy_driver = webdriver.Chrome(desired_capabilities=proxy.capabilities)
+
+        proxy_ip = check_ip(proxy_driver)
+
+        print('Securing TOR proxy: {} --> {}'.format(self.ip, proxy_ip))
+
+        # Close the non-proxied browser
+        self._driver.close()
+
+        if self.ip == proxy_ip:
+            raise ScraperException('Failed to secure a proxy IP address')
+        else:
+            self.ip = proxy_ip
+
+        return proxy_driver
 
     def save_session_cookies(self, file_path):
         pickle.dump(self._driver.get_cookies(), open(file_path, 'wb'))
@@ -51,7 +78,16 @@ class Scraper(object):
                 for error, message in self._error_strings.items():
                     if message in self._driver.page_source:
                         print('{} detected.'.format(error))
-                        random_sleep(retry_wait_range, verbose=True)
+
+                        # Cloudflare or site bot detection; reload driver/proxy and try again
+                        if error in ('1020 Error', 'Bot Check'):
+                            print('Spawning fresh driver with proxy')
+                            self._driver = self._spawn_driver_with_proxy()
+                            break
+
+                        # Any other error type, wait a bit and try without reloading driver
+                        else:
+                            random_sleep(retry_wait_range, verbose=True)
                 else:
                     success = True
             except WebDriverException as e:
