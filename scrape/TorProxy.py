@@ -51,7 +51,7 @@ class TorProxy(Proxy):
     @staticmethod
     def _start_tor():
         if is_darwin():
-            subprocess.run('brew services start tor', shell=True)
+            subprocess.run('brew services restart tor', shell=True)
         else:
             raise NotImplementedError('TorProxy currently only implemented for Mac :(')
 
@@ -66,7 +66,7 @@ class TorProxy(Proxy):
     def _start_privoxy():
         """ Start privoxy by default on port 8118 """
         if is_darwin():
-            subprocess.run('brew services start privoxy', shell=True)
+            subprocess.run('brew services restart privoxy', shell=True)
         else:
             raise NotImplementedError('TorProxy currently only implemented for Mac :(')
 
