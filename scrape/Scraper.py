@@ -19,6 +19,7 @@ class Scraper(object):
         self.ip = check_ip(self._driver)
         print('Your IP: {}'.format(self.ip))
 
+        self._use_proxy = use_proxy
         if use_proxy:
             self._driver = self._spawn_driver_with_proxy()
 
@@ -80,7 +81,7 @@ class Scraper(object):
                         print('{} detected.'.format(error))
 
                         # Cloudflare or site bot detection; reload driver/proxy and try again
-                        if error in ('1020 Error', 'Bot Check'):
+                        if error in ('1020 Error', 'Bot Check') and self._use_proxy:
                             print('Spawning fresh driver with proxy')
                             self._driver = self._spawn_driver_with_proxy()
                             break

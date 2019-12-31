@@ -123,8 +123,8 @@ if __name__ == '__main__':
         wait_range_between_rows = (15, 120)
         wait_range_between_report_loads = (5, 15)
     else:
-        wait_range_between_rows = (30, 450)  # 0.5 - 7.5 minutes
-        wait_range_between_report_loads = (10, 45)
+        wait_range_between_rows = (30, 500)  # 0.5 - 7.5 minutes
+        wait_range_between_report_loads = (20, 60)
 
     # Not sure if there's actually any benefit to this
     cookie_file = path.join(path.dirname(path.dirname(path.abspath(__file__))),
@@ -183,7 +183,8 @@ if __name__ == '__main__':
                 sys.exit()
 
         if site == 'ic':
-            scraper = ICScraper(wait_range=wait_range_between_report_loads, time_limit=time_limit, verbose=verbose)
+            scraper = ICScraper(wait_range=wait_range_between_report_loads, time_limit=time_limit,
+                                use_proxy=False, verbose=verbose)
             scraper.manual_login(cookie_file)
 
         # elif site == 'bv':

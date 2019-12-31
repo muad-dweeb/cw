@@ -12,8 +12,8 @@ from scrape.util import random_sleep, get_config
 
 class ICScraper(Scraper):
 
-    def __init__(self, wait_range, time_limit=None, verbose=False):
-        super().__init__(wait_range, time_limit, verbose)
+    def __init__(self, wait_range, time_limit=None, use_proxy=False, verbose=False):
+        super().__init__(wait_range, time_limit, use_proxy, verbose)
         self.root = 'https://www.instantcheckmate.com/dashboard'
 
         site_specific_error_strings = {'404 Error': 'Uh Oh! Looks like something went wrong.',
