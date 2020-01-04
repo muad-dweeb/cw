@@ -19,6 +19,7 @@ from exceptions import ScraperException, SheetConfigException
 from scrape.util import random_sleep
 
 SEP = '-' * 60
+SITES = {'ic', 'fps'}
 
 
 def validate_config_dict(config_dict):
@@ -94,6 +95,24 @@ def get_columns(dict_reader, config_dict):
     return return_dict
 
 
+def row_should_be_skipped(row_scraped_value):
+    """
+    :param row_scraped_value: Value read from 'scraped' column
+    :return: Boolean
+    """
+    if row_scraped_value is None:
+        return False
+    elif row_scraped_value.lower() in ('failed', 'skip'):
+        return True
+    elif row_scraped_value.lower() in SITES:
+        return True
+    # Legacy compatibility
+    elif bool(row_scraped_value) is True:
+        return True
+    else:
+        return False
+
+
 if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('--config', required=True, help='Configuration name')
@@ -101,7 +120,7 @@ if __name__ == '__main__':
     parser.add_argument('--limit-minutes', required=False, type=int, help='Number of minutes to limit scraping to')
     parser.add_argument('--verbose', default=False, help='Increase print verbosity', action='store_true')
     parser.add_argument('--auto-close', default=False, help='Close the browser when finished', action='store_true')
-    parser.add_argument('--site', required=True, choices={'ic', 'fps'},
+    parser.add_argument('--site', required=True, choices=SITES,
                         help='The site to scrape: instantcheckmate.com (ic) or fastpeoplesearch.com (fps)')
     args = parser.parse_args()
 
@@ -256,16 +275,11 @@ if __name__ == '__main__':
                     duplicate_row = True
 
                 # Skip already-scraped rows
-                if 'scraped' in row.keys() and row['scraped'] is not None:
-                    if bool(row['scraped']) is True or row['scraped'].lower() == 'failed':
-                        if verbose:
-                            print('Skipping previously scraped row. Index: {}'.format(row_count))
-                        sheet_writer.writerow(row)
-                        continue
-                    elif row['scraped'].lower() == 'skip':
-                        if verbose:
-                            print('Skipping row as instructed. Index: {}'.format(row_count))
-                        continue
+                if 'scraped' in row.keys() and row_should_be_skipped(row_scraped_value=row['scraped']):
+                    if verbose:
+                        print('Skipping row with \'scraped\' value: \'{}\''.format(row['scraped']))
+                    sheet_writer.writerow(row)
+                    continue
 
                 print(SEP)
 
@@ -364,7 +378,7 @@ if __name__ == '__main__':
 
                 if found_results:
                     # Mark row as scraped to prevent future re-scrape
-                    output_row['scraped'] = True
+                    output_row['scraped'] = site
                     scraped_count += 1
                 else:
                     output_row['scraped'] = 'failed'
