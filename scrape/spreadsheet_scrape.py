@@ -14,9 +14,9 @@ from scrape.Caffeine import Caffeine
 from scrape.FpsScraper import FpsScraper
 from scrape.ICScraper import ICScraper
 from SheetConfig import SheetConfig
-from SheetManager import SheetManager
 from exceptions import ScraperException, SheetConfigException
 from scrape.util import random_sleep
+from util import create_new_filename
 
 SEP = '-' * 60
 SITES = {'ic', 'fps'}
@@ -166,7 +166,7 @@ if __name__ == '__main__':
         column_dict = get_columns(sheet_reader, config.dict)
 
         # Output Sheet
-        out_file = SheetManager.create_new_filename(in_path=in_file, overwrite_existing=True)
+        out_file = create_new_filename(in_path=in_file, overwrite_existing=True)
 
     except SheetConfigException as e:
         print('Failed to load sheet config \'{}\'. Error: {}'.format(args.config, e))
