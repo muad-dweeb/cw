@@ -1,6 +1,16 @@
+# IDE stuff
 .idea
 *.pyc
+
+# Dynamic data, test and/or production
 test_data
 data
+
+# Production login creds, please don't check these in!
 config/*creds.json
+
+# System executables and installers
+lib
+
+# Misc.
 .DS_Store

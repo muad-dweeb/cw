@@ -12,3 +12,7 @@ class SheetManagerException(BaseException):
 
 class TorProxyException(BaseException):
     pass
+
+
+class InstallerException(BaseException):
+    pass

@@ -44,3 +44,14 @@ def is_darwin():
         return True
     else:
         return False
+
+
+def is_linux():
+    """
+    Check if OS is Linux (assumed Ubuntu for now)
+    :return:
+    """
+    if sys.platform.startswith('linux'):
+        return True
+    else:
+        return False
