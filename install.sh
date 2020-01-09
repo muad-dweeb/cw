@@ -1,5 +1,9 @@
 #/bin/bash
 
+# The directory this script lives in, regardless of where it is called from.
+#   https://stackoverflow.com/a/246128/3900915
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+
 
 ##################
 #  Python setup  #
@@ -37,5 +41,6 @@ pip install -r requirements.txt
 #  Chrome Setup  #
 ##################
 
-# TODO: write runner for ChromeInstaller
+~/.virtualenvs/cw/bin/python ${SCRIPT_DIR}/install/install_chrome.py
+
 # TODO: switch Scraper driver to use new in-repo path
