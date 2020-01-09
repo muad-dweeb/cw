@@ -1,7 +1,7 @@
 import subprocess
+import urllib.request
 import zipfile
 from os import path, mkdir
-import urllib.request
 
 import requests
 
