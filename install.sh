@@ -4,6 +4,8 @@
 #   https://stackoverflow.com/a/246128/3900915
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
+VENV_ROOT="${HOME}/.virtualenvs/cw"
+
 
 ##################
 #  Python setup  #
@@ -34,6 +36,8 @@ pip install --upgrade pip
 echo 'Building Python virtual environment...'
 pip install virtualenv virtualenvwrapper
 mkvirtualenv --python=`which python3` cw
+echo "Python3 virtual env created at $VENV_ROOT"
+source ${VENV_ROOT}/bin/activate
 pip install -r requirements.txt
 
 
@@ -41,6 +45,6 @@ pip install -r requirements.txt
 #  Chrome Setup  #
 ##################
 
-~/.virtualenvs/cw/bin/python ${SCRIPT_DIR}/install/install_chrome.py
+${VENV_ROOT}/bin/python ${SCRIPT_DIR}/install/install_chrome.py
 
 # TODO: switch Scraper driver to use new in-repo path
