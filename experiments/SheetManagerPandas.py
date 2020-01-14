@@ -84,20 +84,3 @@ class SheetManagerPandas(object):
         if len(some_list) != len(set(some_list)):
             return False
         return True
-
-    @staticmethod
-    def create_new_filename(path_prefix, overwrite_existing=False):
-        """ Save to a new CSV file with an incrementing filename unless overwrite is requested """
-        # YYYYMMDD
-        now_string = datetime.now().strftime('%Y%m%d')
-        # Remove any file extension from the path
-        path_prefix = path.splitext(path_prefix)[0]
-        full_path = '{}_{}.csv'.format(path_prefix, now_string)
-
-        if not overwrite_existing:
-            increment = 1
-            while path.isfile(full_path):
-                full_path = '{}_{}_{}.csv'.format(path_prefix, now_string, increment)
-                increment += 1
-
-        return full_path
