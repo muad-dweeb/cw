@@ -10,7 +10,7 @@ data
 config/*creds.json
 
 # System executables and installers
-lib
+lib/*chrome*
 
 # Misc.
 .DS_Store

@@ -16,7 +16,7 @@ from scrape.ICScraper import ICScraper
 from SheetConfig import SheetConfig
 from exceptions import ScraperException, SheetConfigException
 from scrape.util import random_sleep
-from util import create_new_filename
+from lib.util import create_new_filename
 
 SEP = '-' * 60
 SITES = {'ic', 'fps'}
