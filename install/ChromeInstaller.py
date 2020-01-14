@@ -22,7 +22,7 @@ class ChromeInstaller(object):
     @staticmethod
     def _set_browser_url():
         if is_darwin():
-            return 'https://dl.google.com/chrome/mac/stable/GGRO/googlechrome.dmg',
+            return 'https://dl.google.com/chrome/mac/stable/GGRO/googlechrome.dmg'
         elif is_linux():
             return 'https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb'
         else:
@@ -64,7 +64,8 @@ class ChromeInstaller(object):
         subprocess.run(['open', installer_path])
 
         # Move to Applications
-        subprocess.run(['sudo', 'cp', '-r', mount_location, '/Applications/'])
+        # subprocess.run(['sudo', 'cp', '-r', mount_location, '/Applications/'])
+
 
     @staticmethod
     def _install_browser_linux(installer_path):
