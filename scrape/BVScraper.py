@@ -4,7 +4,7 @@ import time
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.keys import Keys
 
-from exceptions import ScraperException
+from lib.exceptions import ScraperException
 from scrape.Scraper import Scraper
 from scrape.util import get_config
 

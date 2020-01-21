@@ -5,9 +5,9 @@ from datetime import datetime
 from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import NoSuchElementException
 
-from exceptions import ScraperException
+from lib.exceptions import ScraperException
 from scrape.Scraper import Scraper
-from scrape.util import random_sleep, get_config
+from scrape.util import get_config
 
 
 class ICScraper(Scraper):

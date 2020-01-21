@@ -4,7 +4,7 @@ import random
 import sys
 import time
 
-from exceptions import ScraperException
+from lib.exceptions import ScraperException
 
 
 def random_sleep(range_tuple, verbose=False):

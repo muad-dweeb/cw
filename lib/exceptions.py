@@ -14,5 +14,3 @@ class TorProxyException(BaseException):
     pass
 
 
-class InstallerException(BaseException):
-    pass

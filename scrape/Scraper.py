@@ -4,7 +4,7 @@ from datetime import datetime
 from selenium import webdriver
 from selenium.common.exceptions import InvalidArgumentException, WebDriverException
 
-from exceptions import ScraperException
+from lib.exceptions import ScraperException
 from scrape.TorProxy import check_ip, TorProxy
 from scrape.util import random_sleep
 

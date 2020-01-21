@@ -4,7 +4,7 @@ import subprocess
 from selenium.webdriver.common.proxy import Proxy, ProxyType
 from selenium import webdriver
 
-from exceptions import TorProxyException
+from lib.exceptions import TorProxyException
 from scrape.util import is_darwin
 
 """

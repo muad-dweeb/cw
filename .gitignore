@@ -14,3 +14,4 @@ lib/*chrome*
 
 # Misc.
 .DS_Store
+cw.egg-info

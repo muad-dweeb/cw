@@ -4,7 +4,7 @@ from argparse import ArgumentParser
 import time
 
 from SheetConfig import SheetConfig
-from exceptions import SheetConfigException, SheetManagerException
+from lib.exceptions import SheetConfigException, SheetManagerException
 from merge.SheetManager import SheetManager
 
 if __name__ == '__main__':

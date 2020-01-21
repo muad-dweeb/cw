@@ -14,7 +14,7 @@ from scrape.Caffeine import Caffeine
 from scrape.FpsScraper import FpsScraper
 from scrape.ICScraper import ICScraper
 from SheetConfig import SheetConfig
-from exceptions import ScraperException, SheetConfigException
+from lib.exceptions import ScraperException, SheetConfigException
 from scrape.util import random_sleep
 from lib.util import create_new_filename
 
