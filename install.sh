@@ -11,12 +11,12 @@ VENV_ROOT="${HOME}/.virtualenvs/cw"
 #  Python setup  #
 ##################
 
-if [[ -z "${command -v pip}" ]]; then
+if [[ -z "$(command -v pip)" ]]; then
     echo 'Installing PIP...'
 
     if [[ "$OSTYPE" == "linux-gnu" ]]; then
         echo 'Linux OS detected'
-        apt install -y python-pip
+        sudo apt install -y python-pip
 
     elif [[ "$OSTYPE" == "darwin"* ]]; then
         echo 'Mac OS detected'
@@ -31,11 +31,12 @@ if [[ -z "${command -v pip}" ]]; then
 fi
 
 echo 'Upgrading PIP...'
-pip install --upgrade pip
+sudo python -m pip install --upgrade pip
 
 echo 'Building Python virtual environment...'
-pip install virtualenv virtualenvwrapper
-mkvirtualenv --python=`which python3` cw
+sudo python -m pip install virtualenv
+mkdir -p $VENV_ROOT
+virtualenv -p python3 $VENV_ROOT
 echo "Python3 virtual env created at $VENV_ROOT"
 source ${VENV_ROOT}/bin/activate
 pip install -r requirements.txt
