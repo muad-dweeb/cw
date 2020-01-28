@@ -151,7 +151,10 @@ if __name__ == '__main__':
 
     # Don't let the computer go to sleep, else it will kill the scraper
     pid = getpid()
-    Caffeine().start(pid)
+    try:
+        Caffeine().start(pid)
+    except NotImplementedError as e:
+        print('WARNING: {}'.format(e))
 
     # Load required files
     try:
