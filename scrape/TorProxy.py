@@ -29,7 +29,7 @@ def check_ip(driver):
     if '"origin"' not in driver.page_source:
         raise TorProxyException('IP check page load failed')
 
-    ip_match = re.findall(pattern='(\\d+\\..+\\.\\d+),', string=driver.page_source)
+    ip_match = re.findall(pattern='(\\d+\\..+\\.\\d+)', string=driver.page_source)
     if len(ip_match) > 0:
         ip = ip_match[0]
     else:
