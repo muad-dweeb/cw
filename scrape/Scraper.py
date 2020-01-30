@@ -11,9 +11,9 @@ from scrape.util import random_sleep
 
 class Scraper(object):
 
-    def __init__(self, wait_range, time_limit=None, use_proxy=False, verbose=False):
+    def __init__(self, wait_range, chromedriver_path, time_limit=None, use_proxy=False, verbose=False):
 
-        self._driver = webdriver.Chrome()
+        self._driver = webdriver.Chrome(executable_path=chromedriver_path)
         print('Chrome spawned at {}'.format(datetime.now()))
 
         self.ip = check_ip(self._driver)

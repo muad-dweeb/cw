@@ -11,8 +11,8 @@ from scrape.util import get_config
 
 class BVScraper(Scraper):
 
-    def __init__(self, wait_range, time_limit=None, verbose=False):
-        super().__init__(wait_range, time_limit, verbose)
+    def __init__(self, wait_range, chromedriver_path, time_limit=None, verbose=False):
+        super().__init__(wait_range, chromedriver_path, time_limit, verbose)
         self.root = 'https://www.beenverified.com/app/dashboard'
 
         site_specific_error_strings = dict()

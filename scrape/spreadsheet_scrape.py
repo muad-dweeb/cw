@@ -145,6 +145,9 @@ if __name__ == '__main__':
         wait_range_between_rows = (30, 500)  # 0.5 - 7.5 minutes
         wait_range_between_report_loads = (20, 60)
 
+    # Path to the chromedriver executable; as downloaded by the install_chrome script
+    chromedriver_path = path.join(path.dirname(path.dirname(path.abspath(__file__))), 'lib', 'chromedriver')
+
     # Not sure if there's actually any benefit to this
     cookie_file = path.join(path.dirname(path.dirname(path.abspath(__file__))),
                             'data', '.{}_cookie_jar.pkl'.format(site))
@@ -205,8 +208,8 @@ if __name__ == '__main__':
                 sys.exit()
 
         if site == 'ic':
-            scraper = ICScraper(wait_range=wait_range_between_report_loads, time_limit=time_limit,
-                                use_proxy=False, verbose=verbose)
+            scraper = ICScraper(wait_range=wait_range_between_report_loads, chromedriver_path=chromedriver_path,
+                                time_limit=time_limit, use_proxy=False, verbose=verbose)
             scraper.manual_login(cookie_file)
 
         # elif site == 'bv':
@@ -214,7 +217,8 @@ if __name__ == '__main__':
         #     scraper.auto_login(cookie_file)
 
         elif site == 'fps':
-            scraper = FpsScraper(wait_range=wait_range_between_report_loads, time_limit=time_limit, verbose=verbose)
+            scraper = FpsScraper(wait_range=wait_range_between_report_loads, chromedriver_path=chromedriver_path,
+                                 time_limit=time_limit, verbose=verbose)
             scraper.auto_login(cookie_file)
 
         else:
