@@ -42,10 +42,32 @@ source ${VENV_ROOT}/bin/activate
 pip install -r requirements.txt
 
 
+####################
+# Install Caffeine #
+####################
+
+if [[ -z "$(command -v caffeine)" ]]; then
+    echo 'Installing Caffeine...'
+
+    if [[ "$OSTYPE" == "linux-gnu" ]]; then
+        echo 'Linux OS detected; skipping.'
+        # sudo apt -y install caffeine
+
+    elif [[ "$OSTYPE" == "darwin"* ]]; then
+        echo 'Mac OS detected'
+        brew cask install caffeine
+
+    else
+        echo "Unsupported OS detected: $OSTYPE"
+
+    fi
+fi
+
+
 ##################
 #  Chrome Setup  #
 ##################
 
-${VENV_ROOT}/bin/python ${SCRIPT_DIR}/install/install_chrome.py
+PYTHONPATH=${SCRIPT_DIR}
 
-# TODO: switch Scraper driver to use new in-repo path
+${VENV_ROOT}/bin/python ${SCRIPT_DIR}/install/install_chrome.py
