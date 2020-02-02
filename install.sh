@@ -43,6 +43,8 @@ pip install -r requirements.txt
 
 ln -s ${VENV_ROOT}/bin/python ${SCRIPT_DIR}/python
 
+"export PYTHONPATH=/home/ubuntu/muad-dweeb/cw" >> ${HOME}/.bashrc
+
 
 ####################
 # Install Caffeine #
