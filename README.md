@@ -7,13 +7,13 @@
 
 * Use `install.sh` to install the system requirements and prep the server for running the repo code
 
-# SheetManager
+# Sheet Manager
 
 ### Run with test data
 
 `python ~/muad-dweeb/cw/manage_sheets.py --master-config master_test --child-config child_test --operation merge`
 
-# spreadsheet_scrape.py
+# Spreadsheet Scrape
 
 ### Usage
 
