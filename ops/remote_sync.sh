@@ -1,5 +1,11 @@
 #!/bin/bash
 
+
+# The directory this script lives in, regardless of where it is called from.
+#   https://stackoverflow.com/a/246128/3900915
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+
+
 key_file=$1
 repo_path=$2
 remote_ip=$3
@@ -48,4 +54,4 @@ verify_file_exists $key_file
 verify_dir_exists $repo_path
 
 
-rsync -e "ssh -i ${key_file}" -av --exclude-from='rsync_exclusions.txt' ${repo_path} ubuntu@${remote_ip}:/home/ubuntu/muad-dweeb/
+rsync -e "ssh -i ${key_file}" -av --exclude-from="${SCRIPT_DIR}/rsync_exclusions.txt" ${repo_path} ubuntu@${remote_ip}:/home/ubuntu/muad-dweeb/
