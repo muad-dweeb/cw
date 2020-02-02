@@ -68,6 +68,6 @@ fi
 #  Chrome Setup  #
 ##################
 
-PYTHONPATH=${SCRIPT_DIR}
+export PYTHONPATH=${SCRIPT_DIR}
 
 ${VENV_ROOT}/bin/python ${SCRIPT_DIR}/install/install_chrome.py
