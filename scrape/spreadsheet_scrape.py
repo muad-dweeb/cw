@@ -14,11 +14,12 @@ from scrape.Caffeine import Caffeine
 from scrape.FpsScraper import FpsScraper
 from scrape.ICScraper import ICScraper
 from SheetConfig import SheetConfig
-from SheetManager import SheetManager
-from exceptions import ScraperException, SheetConfigException
+from lib.exceptions import ScraperException, SheetConfigException
 from scrape.util import random_sleep
+from lib.util import create_new_filename
 
 SEP = '-' * 60
+SITES = {'ic', 'fps'}
 
 
 def validate_config_dict(config_dict):
@@ -94,6 +95,24 @@ def get_columns(dict_reader, config_dict):
     return return_dict
 
 
+def row_should_be_skipped(row_scraped_value):
+    """
+    :param row_scraped_value: Value read from 'scraped' column
+    :return: Boolean
+    """
+    if row_scraped_value is None:
+        return False
+    elif row_scraped_value.lower() in ('failed', 'skip'):
+        return True
+    elif row_scraped_value.lower() in SITES:
+        return True
+    # Legacy compatibility
+    elif bool(row_scraped_value) is True:
+        return True
+    else:
+        return False
+
+
 if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('--config', required=True, help='Configuration name')
@@ -101,7 +120,7 @@ if __name__ == '__main__':
     parser.add_argument('--limit-minutes', required=False, type=int, help='Number of minutes to limit scraping to')
     parser.add_argument('--verbose', default=False, help='Increase print verbosity', action='store_true')
     parser.add_argument('--auto-close', default=False, help='Close the browser when finished', action='store_true')
-    parser.add_argument('--site', required=True, choices={'ic', 'fps'},
+    parser.add_argument('--site', required=True, choices=SITES,
                         help='The site to scrape: instantcheckmate.com (ic) or fastpeoplesearch.com (fps)')
     args = parser.parse_args()
 
@@ -120,11 +139,14 @@ if __name__ == '__main__':
 
     # Seconds between searches, randomized to hopefully throw off bot-detection
     if site == 'fps':
-        wait_range_between_rows = (15, 90)
+        wait_range_between_rows = (15, 120)
         wait_range_between_report_loads = (5, 15)
     else:
-        wait_range_between_rows = (30, 450)  # 0.5 - 7.5 minutes
-        wait_range_between_report_loads = (10, 45)
+        wait_range_between_rows = (30, 500)  # 0.5 - 7.5 minutes
+        wait_range_between_report_loads = (20, 60)
+
+    # Path to the chromedriver executable; as downloaded by the install_chrome script
+    chromedriver_path = path.join(path.dirname(path.dirname(path.abspath(__file__))), 'lib', 'chromedriver')
 
     # Not sure if there's actually any benefit to this
     cookie_file = path.join(path.dirname(path.dirname(path.abspath(__file__))),
@@ -132,7 +154,10 @@ if __name__ == '__main__':
 
     # Don't let the computer go to sleep, else it will kill the scraper
     pid = getpid()
-    Caffeine().start(pid)
+    try:
+        Caffeine().start(pid)
+    except NotImplementedError as e:
+        print('WARNING: {}'.format(e))
 
     # Load required files
     try:
@@ -147,7 +172,7 @@ if __name__ == '__main__':
         column_dict = get_columns(sheet_reader, config.dict)
 
         # Output Sheet
-        out_file = SheetManager.create_new_filename(in_path=in_file, overwrite_existing=True)
+        out_file = create_new_filename(in_path=in_file, overwrite_existing=True)
 
     except SheetConfigException as e:
         print('Failed to load sheet config \'{}\'. Error: {}'.format(args.config, e))
@@ -183,7 +208,8 @@ if __name__ == '__main__':
                 sys.exit()
 
         if site == 'ic':
-            scraper = ICScraper(wait_range=wait_range_between_report_loads, time_limit=time_limit, verbose=verbose)
+            scraper = ICScraper(wait_range=wait_range_between_report_loads, chromedriver_path=chromedriver_path,
+                                time_limit=time_limit, use_proxy=False, verbose=verbose)
             scraper.manual_login(cookie_file)
 
         # elif site == 'bv':
@@ -191,7 +217,8 @@ if __name__ == '__main__':
         #     scraper.auto_login(cookie_file)
 
         elif site == 'fps':
-            scraper = FpsScraper(wait_range=wait_range_between_report_loads, time_limit=time_limit, verbose=verbose)
+            scraper = FpsScraper(wait_range=wait_range_between_report_loads, chromedriver_path=chromedriver_path,
+                                 time_limit=time_limit, verbose=verbose)
             scraper.auto_login(cookie_file)
 
         else:
@@ -255,16 +282,11 @@ if __name__ == '__main__':
                     duplicate_row = True
 
                 # Skip already-scraped rows
-                if 'scraped' in row.keys() and row['scraped'] is not None:
-                    if bool(row['scraped']) is True or row['scraped'].lower() == 'failed':
-                        if verbose:
-                            print('Skipping previously scraped row. Index: {}'.format(row_count))
-                        sheet_writer.writerow(row)
-                        continue
-                    elif row['scraped'].lower() == 'skip':
-                        if verbose:
-                            print('Skipping row as instructed. Index: {}'.format(row_count))
-                        continue
+                if 'scraped' in row.keys() and row_should_be_skipped(row_scraped_value=row['scraped']):
+                    if verbose:
+                        print('Skipping row with \'scraped\' value: \'{}\''.format(row['scraped']))
+                    sheet_writer.writerow(row)
+                    continue
 
                 print(SEP)
 
@@ -363,7 +385,7 @@ if __name__ == '__main__':
 
                 if found_results:
                     # Mark row as scraped to prevent future re-scrape
-                    output_row['scraped'] = True
+                    output_row['scraped'] = site
                     scraped_count += 1
                 else:
                     output_row['scraped'] = 'failed'

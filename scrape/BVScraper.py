@@ -4,18 +4,22 @@ import time
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.keys import Keys
 
-from exceptions import ScraperException
+from lib.exceptions import ScraperException
 from scrape.Scraper import Scraper
 from scrape.util import get_config
 
 
 class BVScraper(Scraper):
 
-    def __init__(self, wait_range, time_limit=None, verbose=False):
-        super().__init__(wait_range, time_limit, verbose)
+    def __init__(self, wait_range, chromedriver_path, time_limit=None, verbose=False):
+        super().__init__(wait_range, chromedriver_path, time_limit, verbose)
         self.root = 'https://www.beenverified.com/app/dashboard'
-        # TODO: Only going to find these error strings as they occur; see ICScraper for format
-        self._error_strings = {}
+
+        site_specific_error_strings = dict()
+
+        # Add to the base class error dict
+        for key, value in site_specific_error_strings.items():
+            self._error_strings[key] = value
 
     def auto_login(self, config_path, cookie_file):
         """

@@ -1,0 +1,11 @@
+cw.egg-info
+data/*.pkl
+experiments
+lib/chromedriver*
+lib/googlechrome*
+test_data
+__pycache__
+.idea
+.git
+*.pyc
+*.DS_Store

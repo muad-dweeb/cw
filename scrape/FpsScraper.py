@@ -3,17 +3,21 @@ import time
 
 from selenium.common.exceptions import NoSuchElementException
 
-from exceptions import ScraperException
+from lib.exceptions import ScraperException
 from scrape.Scraper import Scraper
 
 
 class FpsScraper(Scraper):
 
-    def __init__(self, wait_range, time_limit=None, verbose=False):
-        super().__init__(wait_range, time_limit, verbose)
+    def __init__(self, wait_range, chromedriver_path, time_limit=None, use_proxy=True, verbose=False):
+        super().__init__(wait_range, chromedriver_path, time_limit, use_proxy, verbose)
         self.root = 'https://www.fastpeoplesearch.com/'
-        # TODO: Only going to find these error strings as they occur; see ICScraper for format
-        self._error_strings = {}
+
+        site_specific_error_strings = {'Bot Check': 'Are you human?'}
+
+        # Add to the base class error dict
+        for key, value in site_specific_error_strings.items():
+            self._error_strings[key] = value
 
     def auto_login(self, cookie_file):
         """
@@ -22,7 +26,7 @@ class FpsScraper(Scraper):
         :return:
         """
         try:
-            self._load_page(self.root)
+            self._load_page(self.root, retry=42)
             if os.path.isfile(cookie_file):
                 # Does this do anything useful? WHO KNOWS!!!!!!!!
                 self.load_session_cookies(cookie_file)
@@ -41,7 +45,7 @@ class FpsScraper(Scraper):
 
         search_url = self.root + '/name/{}-{}_{}-{}'.format(first, last, city, state)
         try:
-            self._load_page(search_url)
+            self._load_page(search_url, retry=420)
         except ScraperException as e:
             raise ScraperException('Failed to load search page: {}. Error: {}'.format(search_url, e))
 

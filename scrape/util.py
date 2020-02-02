@@ -1,9 +1,10 @@
 import json
 import os
 import random
+import sys
 import time
 
-from exceptions import ScraperException
+from lib.exceptions import ScraperException
 
 
 def random_sleep(range_tuple, verbose=False):
@@ -32,3 +33,25 @@ def get_config(config_path):
 
     print('Config successfully loaded from: {}'.format(config_path))
     return config_dict
+
+
+def is_darwin():
+    """
+    Check if OS is Mac
+    :return:
+    """
+    if 'darwin' in sys.platform:
+        return True
+    else:
+        return False
+
+
+def is_linux():
+    """
+    Check if OS is Linux (assumed Ubuntu for now)
+    :return:
+    """
+    if sys.platform.startswith('linux'):
+        return True
+    else:
+        return False

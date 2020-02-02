@@ -1,5 +1,6 @@
 import subprocess
-import sys
+
+from scrape.util import is_darwin
 
 
 class Caffeine:
@@ -13,15 +14,11 @@ class Caffeine:
         pass
 
     @staticmethod
-    def _is_darwin():
-        if 'darwin' in sys.platform:
-            return True
-        else:
-            return False
-
-    def start(self, pid):
-        if self._is_darwin():
+    def start(pid):
+        if is_darwin():
             subprocess.Popen(['caffeinate', '-w', str(pid)])
+        else:
+            raise NotImplementedError('Caffeine is currently only implemented for Mac :(')
 
     def stop(self):
         pass

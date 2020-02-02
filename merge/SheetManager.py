@@ -1,10 +1,10 @@
 import csv
 
 from copy import deepcopy
-from datetime import datetime
 from os import path
 
-from exceptions import SheetManagerException
+from lib.exceptions import SheetManagerException
+from lib.util import create_new_filename
 
 SEP = '-' * 70
 
@@ -19,8 +19,8 @@ class SheetManager(object):
         self._master_config = master_config
         self._child_config = child_config
 
-        out_file = self.create_new_filename(in_path=self._master_config.location,
-                                            overwrite_existing=overwrite)
+        out_file = create_new_filename(in_path=self._master_config.location,
+                                       overwrite_existing=overwrite)
         self.out_file = path.expanduser(out_file)
 
         # Required files
@@ -229,24 +229,3 @@ class SheetManager(object):
         while actual_id_len is not None and len(uid) < actual_id_len:
             uid = '0' + uid
         return uid
-
-    @staticmethod
-    def create_new_filename(in_path, overwrite_existing=False):
-        """ Save to a new CSV file with an incrementing filename unless overwrite is requested """
-        # YYYYMMDD
-        now_string = datetime.now().strftime('%Y%m%d')
-
-        full_path = path.expanduser(in_path)
-
-        # Remove any file extension from the path
-        full_path = path.splitext(full_path)[0]
-
-        out_path = '{}_{}.csv'.format(full_path, now_string)
-
-        if not overwrite_existing:
-            increment = 1
-            while path.isfile(out_path):
-                out_path = '{}_{}_{}.csv'.format(full_path, now_string, increment)
-                increment += 1
-
-        return out_path
