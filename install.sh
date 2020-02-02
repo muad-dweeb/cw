@@ -41,6 +41,8 @@ echo "Python3 virtual env created at $VENV_ROOT"
 source ${VENV_ROOT}/bin/activate
 pip install -r requirements.txt
 
+ln -s ${VENV_ROOT}/bin/python ${SCRIPT_DIR}/python
+
 
 ####################
 # Install Caffeine #
