@@ -20,4 +20,5 @@
 Recommend to sort the input sheet by owner last name to prevent duplicate scrapes beforehand. 
 
 `cd ~/muad-dweeb/cw`
+
 `./python scrape/spreadsheet_scrape.py -h`
