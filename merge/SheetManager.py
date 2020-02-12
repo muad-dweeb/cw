@@ -80,15 +80,17 @@ class SheetManager(object):
 
                 # Only add child if its ID len matches the master config length!
                 child_id = row[self._child_config.id_column]
-                if len(self._normalize_uid(child_id)) == self._master_config.id_char_count:
+                if self._master_config.id_char_count == 'mixed' or \
+                        len(self._normalize_uid(child_id)) == self._master_config.id_char_count:
                     remaining_child_rows.append(row)
                 else:
                     unwanted_child_ids.append(child_id)
 
             print(SEP)
             print('Total child rows processed: {}'.format(total_children))
-            print('    Child rows with proper ID lengths: {}'.format(len(remaining_child_rows)))
-            print('    Child rows with incorrect ID lengths: {}'.format(len(unwanted_child_ids)))
+            if self._master_config.id_char_count != 'mixed':
+                print('    Child rows with proper ID lengths: {}'.format(len(remaining_child_rows)))
+                print('    Child rows with incorrect ID lengths: {}'.format(len(unwanted_child_ids)))
             print(SEP)
 
             with open(self.out_file, 'w') as out:
@@ -226,6 +228,6 @@ class SheetManager(object):
     def _normalize_uid(uid, actual_id_len=None):
         """ Delete hyphens and spaces from input string and add missing leading zeros """
         uid = uid.replace('-', '').replace(' ', '')
-        while actual_id_len is not None and len(uid) < actual_id_len:
+        while actual_id_len not in (None, 'mixed') and len(uid) < actual_id_len:
             uid = '0' + uid
         return uid
