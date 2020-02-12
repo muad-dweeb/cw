@@ -227,17 +227,16 @@ if __name__ == '__main__':
 
         with open(out_file, 'w') as out:
             print('Writing to:     {}'.format(out_file))
-
             print(SEP)
 
             last_search = None
             current_search = {'first_name': None, 'last_name': None, 'city': None, 'state': None}
+            contact_columns = {'phone': list(), 'email': list()}
 
             # Output sheet will have at least the input sheet's columns
             output_columns = sheet_reader.fieldnames
 
-            contact_columns = {'phone': list(), 'email': list()}
-
+            # Build initial output column list
             column_index = 0
             while column_index < column_dict['count']:
 
