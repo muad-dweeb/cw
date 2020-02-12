@@ -18,11 +18,19 @@ from lib.exceptions import ScraperException, SheetConfigException
 from scrape.util import random_sleep
 from lib.util import create_new_filename
 
+# Print separator
 SEP = '-' * 60
-SITES = {'ic', 'fps'}
+
+# Seconds between searches, randomized to hopefully throw off bot-detection
+SITES = {
+    'fps': {'wait_range_between_rows': (15, 120),
+            'wait_range_between_report_loads': (5, 15)},
+    'ic':  {'wait_range_between_rows': (30, 500),  # 0.5 - 7.5 minutes}
+            'wait_range_between_report_loads': (20, 60)}
+         }
 
 
-def validate_config_dict(config_dict):
+def validate_sheet_config_dict(config_dict):
     """
     location, id_column, and id_char_count are pre-validated by the SheetConfig class
     The validated keys here are specific to this CLI's usage
@@ -137,14 +145,6 @@ if __name__ == '__main__':
     scraped_count = 0
     failed_count = 0
 
-    # Seconds between searches, randomized to hopefully throw off bot-detection
-    if site == 'fps':
-        wait_range_between_rows = (15, 120)
-        wait_range_between_report_loads = (5, 15)
-    else:
-        wait_range_between_rows = (30, 500)  # 0.5 - 7.5 minutes
-        wait_range_between_report_loads = (20, 60)
-
     # Path to the chromedriver executable; as downloaded by the install_chrome script
     chromedriver_path = path.join(path.dirname(path.dirname(path.abspath(__file__))), 'lib', 'chromedriver')
 
@@ -163,7 +163,7 @@ if __name__ == '__main__':
     try:
         # Config
         config = SheetConfig(args.config)
-        validate_config_dict(config.dict)
+        validate_sheet_config_dict(config.dict)
 
         # Input Sheet
         in_file = path.expanduser(config.location)
@@ -208,7 +208,8 @@ if __name__ == '__main__':
                 sys.exit()
 
         if site == 'ic':
-            scraper = ICScraper(wait_range=wait_range_between_report_loads, chromedriver_path=chromedriver_path,
+            scraper = ICScraper(wait_range=SITES['ic']['wait_range_between_report_loads'],
+                                chromedriver_path=chromedriver_path,
                                 time_limit=time_limit, use_proxy=False, verbose=verbose)
             scraper.manual_login(cookie_file)
 
@@ -217,7 +218,8 @@ if __name__ == '__main__':
         #     scraper.auto_login(cookie_file)
 
         elif site == 'fps':
-            scraper = FpsScraper(wait_range=wait_range_between_report_loads, chromedriver_path=chromedriver_path,
+            scraper = FpsScraper(wait_range=SITES['fps']['wait_range_between_report_loads'],
+                                 chromedriver_path=chromedriver_path,
                                  time_limit=time_limit, verbose=verbose)
             scraper.auto_login(cookie_file)
 
@@ -292,10 +294,10 @@ if __name__ == '__main__':
                 # Randomized wait in between searches
                 if scraped_count > 0 and not last_search_was_duplicate and not last_row_was_duplicate:
                     if found_results:
-                        random_sleep(wait_range_between_rows, verbose=verbose)
+                        random_sleep(SITES[site]['wait_range_between_rows'], verbose=verbose)
                     else:
                         # A shorter wait time if 0 matching results were found for a row
-                        random_sleep(wait_range_between_report_loads, verbose=verbose)
+                        random_sleep(SITES[site]['wait_range_between_report_loads'], verbose=verbose)
 
                 found_results = False
                 output_row = deepcopy(row)
@@ -341,7 +343,7 @@ if __name__ == '__main__':
 
                             # Short wait in between all report loads
                             if scraped_count > 1:
-                                random_sleep(wait_range_between_report_loads, verbose=True)
+                                random_sleep(SITES[site]['wait_range_between_report_loads'], verbose=True)
 
                             # Use the current search params to scrape contact info
                             contact_info = scraper.get_all_info(first=first_name, last=last_name, city=city, state=state)
