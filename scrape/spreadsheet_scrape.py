@@ -293,16 +293,16 @@ if __name__ == '__main__':
                 else:
                     duplicate_row = True
 
-                if 'hostname' in row.keys() and row['hostname'] != hostname:
-                    if verbose:
-                        print('Skipping row with hostname \'{}\''.format(row['hostname']))
-                    continue
-
                 # Skip already-scraped rows
                 if 'scraped' in row.keys() and row_should_be_skipped(row_scraped_value=row['scraped']):
                     if verbose:
                         print('Skipping row with \'scraped\' value: \'{}\''.format(row['scraped']))
                     sheet_writer.writerow(row)
+                    continue
+
+                if 'hostname' in row.keys() and row['hostname'] != hostname:
+                    if verbose:
+                        print('Skipping row with hostname \'{}\''.format(row['hostname']))
                     continue
 
                 print(SEP)
