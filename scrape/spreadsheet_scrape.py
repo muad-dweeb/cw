@@ -16,7 +16,7 @@ from scrape.ICScraper import ICScraper
 from SheetConfig import SheetConfig
 from lib.exceptions import ScraperException, SheetConfigException
 from scrape.util import random_sleep
-from lib.util import create_new_filename
+from lib.util import create_new_filename, upload_file
 
 # Print separator
 SEP = '-' * 60
@@ -28,6 +28,8 @@ SITES = {
     'ic':  {'wait_range_between_rows': (30, 500),  # 0.5 - 7.5 minutes}
             'wait_range_between_report_loads': (20, 60)}
          }
+
+UPLOAD_BUCKET = 'cw-sheets'
 
 
 def validate_sheet_config_dict(config_dict):
@@ -130,6 +132,7 @@ if __name__ == '__main__':
     parser.add_argument('--auto-close', default=False, help='Close the browser when finished', action='store_true')
     parser.add_argument('--site', required=True, choices=SITES,
                         help='The site to scrape: instantcheckmate.com (ic) or fastpeoplesearch.com (fps)')
+    parser.add_argument('--upload', default=False, action='store_true', help='Upload finished file to s3 bucket')
     args = parser.parse_args()
 
     limit_rows = args.limit_rows
@@ -137,6 +140,7 @@ if __name__ == '__main__':
     verbose = args.verbose
     auto_close = args.auto_close
     site = args.site
+    upload = args.upload
 
     config = None
     scraper = None
@@ -144,6 +148,8 @@ if __name__ == '__main__':
     row_count = 0
     scraped_count = 0
     failed_count = 0
+
+    hostname = socket.gethostname()
 
     # Path to the chromedriver executable; as downloaded by the install_chrome script
     chromedriver_path = path.join(path.dirname(path.dirname(path.abspath(__file__))), 'lib', 'chromedriver')
@@ -282,7 +288,7 @@ if __name__ == '__main__':
                 else:
                     duplicate_row = True
 
-                if 'hostname' in row.keys() and row['hostname'] != socket.gethostname():
+                if 'hostname' in row.keys() and row['hostname'] != hostname:
                     if verbose:
                         print('Skipping row with hostname \'{}\''.format(row['hostname']))
                     continue
@@ -425,6 +431,15 @@ if __name__ == '__main__':
 
     if scraper and auto_close:
         scraper.close()
+
+    # Upload out_file to s3 bucket
+    if upload:
+        object_name = '{}.{}'.format(out_file, hostname)
+        try:
+            upload_file(file_name=out_file, bucket=UPLOAD_BUCKET, object_name=object_name)
+        except ClientError as e:
+            print('S3 upload failed: {}'.format(e))
+            traceback.print_exc()
 
     end_time = datetime.now()
     duration = end_time - start_time
