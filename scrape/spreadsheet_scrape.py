@@ -282,6 +282,11 @@ if __name__ == '__main__':
                 else:
                     duplicate_row = True
 
+                if 'hostname' in row.keys() and row['hostname'] != socket.gethostname():
+                    if verbose:
+                        print('Skipping row with hostname \'{}\''.format(row['hostname']))
+                    continue
+
                 # Skip already-scraped rows
                 if 'scraped' in row.keys() and row_should_be_skipped(row_scraped_value=row['scraped']):
                     if verbose:
