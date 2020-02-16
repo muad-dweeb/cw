@@ -1,4 +1,6 @@
 import sys
+from time import sleep
+
 import traceback
 from argparse import ArgumentParser
 from copy import deepcopy
@@ -16,7 +18,7 @@ from scrape.ICScraper import ICScraper
 from SheetConfig import SheetConfig
 from lib.exceptions import ScraperException, SheetConfigException
 from scrape.util import random_sleep
-from lib.util import create_new_filename, upload_file
+from lib.util import create_new_filename, upload_file, get_current_ec2_instance_id, shutdown_ec2_instance
 
 # Print separator
 SEP = '-' * 60
@@ -133,6 +135,8 @@ if __name__ == '__main__':
     parser.add_argument('--site', required=True, choices=SITES,
                         help='The site to scrape: instantcheckmate.com (ic) or fastpeoplesearch.com (fps)')
     parser.add_argument('--upload', default=False, action='store_true', help='Upload finished file to s3 bucket')
+    parser.add_argument('--ec2-shutdown', default=False, action='store_true',
+                        help='Shuts off machine if an EC2 Instance')
     args = parser.parse_args()
 
     limit_rows = args.limit_rows
@@ -141,6 +145,7 @@ if __name__ == '__main__':
     auto_close = args.auto_close
     site = args.site
     upload = args.upload
+    ec2_shutdown = args.ec2_shutdown
 
     config = None
     scraper = None
@@ -450,3 +455,10 @@ if __name__ == '__main__':
     print('Total rows successfully scraped: {}'.format(scraped_count))
     print('Total rows failed to scrape: {}'.format(failed_count))
     print('Total reports loaded: {}'.format(scraper.reports_loaded))
+
+    if ec2_shutdown:
+        instance_id = get_current_ec2_instance_id()
+        print(SEP)
+        print('Shutting down Instance {} in 10 seconds...'.format(instance_id))
+        sleep(10)
+        shutdown_ec2_instance(instance_id=instance_id)

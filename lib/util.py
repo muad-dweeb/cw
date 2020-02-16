@@ -1,5 +1,6 @@
 import boto3
 import logging
+import requests
 from botocore.exceptions import ClientError
 from datetime import datetime
 from os import path
@@ -63,3 +64,14 @@ def upload_file(file_name, bucket, object_name=None):
         response = s3_client.upload_file(file_name, bucket, object_name)
     except ClientError as e:
         raise e
+
+
+def get_current_ec2_instance_id():
+    url = 'http://169.254.169.254/latest/meta-data/instance-id'
+    response = requests.request("GET", url)
+    return response.text
+
+
+def shutdown_ec2_instance(instance_id):
+    ec2 = boto3.resource('ec2')
+    instance = ec2.Instance(instance_id)
