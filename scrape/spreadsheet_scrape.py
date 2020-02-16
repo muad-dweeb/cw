@@ -8,6 +8,7 @@ from csv import DictReader, DictWriter
 from datetime import datetime, timedelta
 from os import path, getpid
 from re import compile
+from socket import gethostname
 
 from selenium.common.exceptions import NoSuchWindowException
 
@@ -154,7 +155,7 @@ if __name__ == '__main__':
     scraped_count = 0
     failed_count = 0
 
-    hostname = socket.gethostname()
+    hostname = gethostname()
 
     # Path to the chromedriver executable; as downloaded by the install_chrome script
     chromedriver_path = path.join(path.dirname(path.dirname(path.abspath(__file__))), 'lib', 'chromedriver')
