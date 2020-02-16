@@ -69,4 +69,8 @@ exit_on_error $?
 mkdir -p ${HOME}/muad-dweeb
 exit_on_error $?
 
+# For running cw repo code
+echo '' >> ${HOME}/.bashrc
+echo 'export PYTHONPATH=/home/ubuntu/muad-dweeb/cw' >> ${HOME}/.bashrc
+
 sudo reboot now
