@@ -304,6 +304,7 @@ if __name__ == '__main__':
                 if 'hostname' in row.keys() and row['hostname'] != hostname:
                     if verbose:
                         print('Skipping row with hostname \'{}\''.format(row['hostname']))
+                    sheet_writer.writerow(row)
                     continue
 
                 print(SEP)
