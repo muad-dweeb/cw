@@ -1,0 +1,9 @@
+{
+    "location": "~/muad-dweeb/cw/data/whatcom_properties.csv",
+    "id_column": "Parcel",
+    "id_char_count": "mixed",
+    "first_name_column": "Owner First Name",
+    "last_name_column": "Owner Last Name",
+    "state_column": "Owner State",
+    "city_column": "Owner City"
+}
