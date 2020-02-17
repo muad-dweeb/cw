@@ -73,4 +73,5 @@ exit_on_error $?
 echo '' >> ${HOME}/.bashrc
 echo 'export PYTHONPATH=/home/ubuntu/muad-dweeb/cw' >> ${HOME}/.bashrc
 
+echo 'Rebooting now...'
 sudo reboot now
