@@ -75,7 +75,8 @@ def get_current_ec2_instance_id():
 def get_current_ec2_instance_region():
     url = 'http://169.254.169.254/latest/meta-data/placement/availability-zone'
     response = requests.request('GET', url)
-    return response.text
+    parent_region = response.text.rstrip('abcdefg')
+    return parent_region
 
 
 def shutdown_ec2_instance(instance_id, region):

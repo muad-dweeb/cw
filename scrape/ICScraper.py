@@ -160,7 +160,6 @@ class ICScraper(Scraper):
         :return: dict
         """
 
-        retry_wait_range = (0, 5)
         report_timeout = 180
         main_report = None
         contact_dict = {'phone_numbers': dict(), 'email_addresses': list()}
