@@ -12,8 +12,8 @@ from scrape.util import get_config
 
 class ICScraper(Scraper):
 
-    def __init__(self, wait_range, chromedriver_path, time_limit=None, use_proxy=False, verbose=False):
-        super().__init__(wait_range, chromedriver_path, time_limit, use_proxy, verbose)
+    def __init__(self, logger, wait_range, chromedriver_path, time_limit=None, use_proxy=False):
+        super().__init__(logger, wait_range, chromedriver_path, time_limit, use_proxy)
         self.root = 'https://www.instantcheckmate.com/dashboard'
 
         site_specific_error_strings = {'404 Error': 'Uh Oh! Looks like something went wrong.',
@@ -50,7 +50,7 @@ class ICScraper(Scraper):
             except NoSuchElementException:
                 time.sleep(2)
 
-        print('Login successful')
+        self.logger.info('Login successful')
         self.save_session_cookies(cookie_file)
 
         return True
@@ -80,7 +80,7 @@ class ICScraper(Scraper):
 
         # MANUAL CAPTCHA RESOLUTION REQUIRED
         countdown_begin = time.time()
-        print('You have {} seconds to clear all Captchas!'.format(captcha_timeout))
+        self.logger.warning('You have {} seconds to clear all Captchas!'.format(captcha_timeout))
 
         # Verify login success
         success = False
@@ -93,7 +93,7 @@ class ICScraper(Scraper):
             if time.time() - countdown_begin > captcha_timeout:
                 raise ScraperException('Captcha not cleared in time')
 
-        print('Login successful')
+        self.logger.info('Login successful')
 
     def _detect_login_page(self):
         try:
@@ -103,7 +103,7 @@ class ICScraper(Scraper):
             return False
         return True
 
-    def find(self, first, last, city, state, verbose=False):
+    def find(self, first, last, city, state):
         matches = list()
 
         search_url = self.root + '/search/person/?first={}&last={}&city={}&state={}'.format(first, last, city, state)
@@ -143,8 +143,7 @@ class ICScraper(Scraper):
             if locations_list[0].text.split(',')[0].lower() != city.lower():
                 continue
 
-            if verbose:
-                print('Result: {}, Age: {}, City: {}'.format(found_full, found_age, found_city))
+            self.logger.info('Result: {}, Age: {}, City: {}'.format(found_full, found_age, found_city))
 
             # Only keep 100% input matches
             matches.append(result)
@@ -192,19 +191,19 @@ class ICScraper(Scraper):
 
                     # Something is wrong with this particular report, probably server-side
                     if error == '500 Error':
-                        print('Report broken; 500 Error detected.')
+                        self.logger.error('Report broken; 500 Error detected.')
 
                         # Call it a loss and move on
                         return contact_dict
 
-                    print('{} detected.'.format(error))
+                    self.logger.error('{} detected.'.format(error))
                     return error
 
             # Generic time-out
             if time.time() - countdown_begin > report_timeout:
                 raise ScraperException('Report failed to generate in {} seconds'.format(report_timeout))
 
-        print('Report load successful')
+        self.logger.info('Report load successful')
         self.reports_loaded += 1
 
         phone_rows = main_report.find_elements_by_class_name('phone-row')

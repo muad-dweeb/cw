@@ -1,4 +1,6 @@
 import pickle
+import random
+import time
 from datetime import datetime
 
 from selenium import webdriver
@@ -6,18 +8,19 @@ from selenium.common.exceptions import InvalidArgumentException, WebDriverExcept
 
 from lib.exceptions import ScraperException
 from scrape.TorProxy import check_ip, TorProxy
-from scrape.util import random_sleep
 
 
 class Scraper(object):
 
-    def __init__(self, wait_range, chromedriver_path, time_limit=None, use_proxy=False, verbose=False):
+    def __init__(self, logger, wait_range, chromedriver_path, time_limit=None, use_proxy=False):
+
+        self.logger = logger
 
         self._driver = webdriver.Chrome(executable_path=chromedriver_path)
-        print('Chrome spawned at {}'.format(datetime.now()))
+        self.logger.debug('Chrome spawned at {}'.format(datetime.now()))
 
         self.ip = check_ip(self._driver)
-        print('Your IP: {}'.format(self.ip))
+        self.logger.debug('Your IP: {}'.format(self.ip))
 
         self._use_proxy = use_proxy
         if use_proxy:
@@ -27,7 +30,6 @@ class Scraper(object):
         # Seconds between searches, randomized to hopefully throw off bot-detection
         self._wait_range = wait_range
         self._time_limit = time_limit
-        self._verbose = verbose
 
         # Internal metric
         self.reports_loaded = 0
@@ -42,7 +44,7 @@ class Scraper(object):
 
         proxy_ip = check_ip(proxy_driver)
 
-        print('Securing TOR proxy: {} --> {}'.format(self.ip, proxy_ip))
+        self.logger.debug('Securing TOR proxy: {} --> {}'.format(self.ip, proxy_ip))
 
         # Close the non-proxied browser
         self._driver.close()
@@ -56,8 +58,7 @@ class Scraper(object):
 
     def save_session_cookies(self, file_path):
         pickle.dump(self._driver.get_cookies(), open(file_path, 'wb'))
-        if self._verbose:
-            print('Session cookies saved to: {}'.format(file_path))
+        self.logger.debug('Session cookies saved to: {}'.format(file_path))
 
     def load_session_cookies(self, file_path):
         for cookie in pickle.load(open(file_path, 'rb')):
@@ -67,8 +68,7 @@ class Scraper(object):
                     self._driver.add_cookie({'name': key, 'value': value})
                 except InvalidArgumentException as e:
                     raise ScraperException('Failed to add cookie key \'{}\' to session. Error: {}'.format(key, e))
-        if self._verbose:
-            print('Session cookies loaded from: {}'.format(file_path))
+        self.logger.debug('Session cookies loaded from: {}'.format(file_path))
 
     def _load_page(self, url, retry=3):
         success = False
@@ -78,26 +78,26 @@ class Scraper(object):
                 self._driver.get(url)
                 for error, message in self._error_strings.items():
                     if message in self._driver.page_source:
-                        print('{} detected.'.format(error))
+                        self.logger.error('{} detected.'.format(error))
 
                         # Cloudflare or site bot detection; reload driver/proxy and try again
                         if error in ('1020 Error', 'Bot Check') and self._use_proxy:
-                            print('Spawning fresh driver with proxy')
+                            self.logger.debug('Spawning fresh driver with proxy')
                             self._driver = self._spawn_driver_with_proxy()
                             break
 
                         # Any other error type, wait a bit and try without reloading driver
                         else:
-                            random_sleep(retry_wait_range, verbose=True)
+                            self.random_sleep(retry_wait_range)
                 else:
                     success = True
             except WebDriverException as e:
                 retry -= 1
-                print('{}. Retries left: {}'.format(e, retry))
+                self.logger.error('{}. Retries left: {}'.format(e, retry))
         if success is False:
             raise ScraperException('Page failed to load; retry limit reached.')
 
-    def find(self, first, last, city, state, verbose):
+    def find(self, first, last, city, state):
         raise NotImplementedError('Implement me in derived class, sucka')
 
     def get_info(self, search_result):
@@ -111,8 +111,8 @@ class Scraper(object):
         full_info = {'phone_numbers': set(), 'email_addresses': set()}
         scrape_index = 0
 
-        search_results = self.find(first=first, last=last, city=city, state=state, verbose=True)
-        print('{} matching results found.'.format(len(search_results)))
+        search_results = self.find(first=first, last=last, city=city, state=state)
+        self.logger.debug('{} matching results found.'.format(len(search_results)))
 
         # NOTE: New elements are generated each time the search page is loaded, rendering all previous elements stale
         while scrape_index < len(search_results):
@@ -123,7 +123,7 @@ class Scraper(object):
             if type(single_info) == str and single_info in self._error_strings.keys():
 
                 # Error page encountered; reload the search results page and try once more
-                search_results = self.find(first=first, last=last, city=city, state=state, verbose=False)
+                search_results = self.find(first=first, last=last, city=city, state=state)
                 single_info = self.get_info(search_result=search_results[scrape_index])
 
             for number, number_type in single_info['phone_numbers'].items():
@@ -136,10 +136,10 @@ class Scraper(object):
             if scrape_index == 0 or scrape_index < len(search_results) - 1:
 
                 # It takes a human some time to do anything with the report's information
-                random_sleep(self._wait_range, verbose=self._verbose)
+                self.random_sleep(self._wait_range)
 
             # Navigate back to search results page (and reload elements)
-            search_results = self.find(first=first, last=last, city=city, state=state, verbose=False)
+            search_results = self.find(first=first, last=last, city=city, state=state)
 
             scrape_index += 1
 
@@ -149,4 +149,9 @@ class Scraper(object):
 
     def close(self):
         self._driver.close()
-        print('Chrome killed at {}'.format(datetime.now()))
+        self.logger.info('Chrome killed at {}'.format(datetime.now()))
+
+    def random_sleep(self, range_tuple):
+        wait_time = random.uniform(*range_tuple)
+        self.logger.debug('Waiting for {} seconds...'.format(round(wait_time, 2)))
+        time.sleep(wait_time)

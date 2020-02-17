@@ -9,8 +9,8 @@ from scrape.Scraper import Scraper
 
 class FpsScraper(Scraper):
 
-    def __init__(self, wait_range, chromedriver_path, time_limit=None, use_proxy=True, verbose=False):
-        super().__init__(wait_range, chromedriver_path, time_limit, use_proxy, verbose)
+    def __init__(self, logger, wait_range, chromedriver_path, time_limit=None, use_proxy=True):
+        super().__init__(logger, wait_range, chromedriver_path, time_limit, use_proxy)
         self.root = 'https://www.fastpeoplesearch.com/'
 
         site_specific_error_strings = {'Bot Check': 'Are you human?'}
@@ -32,11 +32,11 @@ class FpsScraper(Scraper):
                 self.load_session_cookies(cookie_file)
                 self._driver.refresh()
             self.save_session_cookies(cookie_file)
-            print('Site load successful')
+            self.logger.info('Site load successful')
         except ScraperException as e:
             raise ScraperException('Unable to load main page: {}. {}'.format(self.root, e))
 
-    def find(self, first, last, city, state, verbose=False):
+    def find(self, first, last, city, state):
         """
         Performs the search and filters out false positives
         :return: list of
@@ -50,13 +50,12 @@ class FpsScraper(Scraper):
             raise ScraperException('Failed to load search page: {}. Error: {}'.format(search_url, e))
 
         results_list = self._driver.find_elements_by_class_name('card-block')
-        for relevant_result in self._relevant_search_matches(results_list, first, last, city, state, verbose=verbose):
+        for relevant_result in self._relevant_search_matches(results_list, first, last, city, state):
             matches.append(relevant_result)
 
         # Nothing found, slightly loosen the matching criteria and try again
         if len(matches) == 0:
-            for relevant_result in self._relevant_search_matches(results_list, first, last, city, state, fuzzy=True,
-                                                                 verbose=False):
+            for relevant_result in self._relevant_search_matches(results_list, first, last, city, state, fuzzy=True):
                 matches.append(relevant_result)
 
         # Free memory
@@ -64,7 +63,7 @@ class FpsScraper(Scraper):
 
         return matches
 
-    def _relevant_search_matches(self, results_list, first, last, city, state, fuzzy=False, verbose=False):
+    def _relevant_search_matches(self, results_list, first, last, city, state, fuzzy=False):
         for result in results_list:
             found_age = None
             found_full = None
@@ -112,8 +111,9 @@ class FpsScraper(Scraper):
             if found_city.lower() != city.lower() or found_state.lower() != state.lower():
                 continue
 
-            if verbose and not fuzzy:
-                print('Result: {}, Age: {}, City: {}, State: {}'.format(found_full, found_age, found_city, found_state))
+            if not fuzzy:
+                self.logger.debug('Result: {}, Age: {}, City: {}, State: {}'.format(found_full, found_age, found_city,
+                                                                                    found_state))
 
             # Only keep 100% input matches
             yield result
@@ -198,7 +198,7 @@ class FpsScraper(Scraper):
             if time.time() - countdown_begin > report_timeout:
                 raise ScraperException('Report failed to generate in {} seconds'.format(report_timeout))
 
-        print('Report load successful')
+        self.logger.info('Report load successful')
         self.reports_loaded += 1
 
         # Primary phone section (max 8 before 'Show More...')
