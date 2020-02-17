@@ -438,6 +438,7 @@ if __name__ == '__main__':
         print('Unhandled exception: {}'.format(e))
         traceback.print_exc()
 
+    # Close the browser
     if scraper and auto_close:
         scraper.close()
 
@@ -451,6 +452,7 @@ if __name__ == '__main__':
             print('S3 upload failed: {}'.format(e))
             traceback.print_exc()
 
+    # Metrics!
     end_time = datetime.now()
     duration = end_time - start_time
     print(SEP)
@@ -461,6 +463,7 @@ if __name__ == '__main__':
     print('Total rows failed to scrape: {}'.format(failed_count))
     print('Total reports loaded: {}'.format(scraper.reports_loaded))
 
+    # Power down instance to save utilization costs
     if ec2_shutdown:
         instance_id = get_current_ec2_instance_id()
         instance_region = get_current_ec2_instance_region()
