@@ -444,7 +444,7 @@ if __name__ == '__main__':
 
     # Upload out_file to s3 bucket
     if upload:
-        object_name = '{}.{}'.format(out_file, hostname)
+        object_name = '{}.{}'.format(path.basename(out_file), hostname)
         try:
             print('Uploading {} to {}/{}'.format(out_file, UPLOAD_BUCKET, object_name))
             upload_file(file_name=out_file, bucket=UPLOAD_BUCKET, object_name=object_name)
