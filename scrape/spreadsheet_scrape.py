@@ -293,12 +293,12 @@ if __name__ == '__main__':
 
                 # Skip already-scraped rows
                 if 'scraped' in row.keys() and row_should_be_skipped(row_scraped_value=row['scraped']):
-                    logger.debug('Skipping row with \'scraped\' value: \'{}\''.format(row['scraped']))
+                    logger.debug('Skipping row {} with \'scraped\' value: \'{}\''.format(row_count, row['scraped']))
                     sheet_writer.writerow(row)
                     continue
 
                 if 'hostname' in row.keys() and row['hostname'] != hostname:
-                    logger.debug('Skipping row with hostname \'{}\''.format(row['hostname']))
+                    logger.debug('Skipping row {} with hostname \'{}\''.format(row_count, row['hostname']))
                     sheet_writer.writerow(row)
                     continue
 
