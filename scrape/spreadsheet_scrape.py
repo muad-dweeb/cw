@@ -19,7 +19,7 @@ from scrape.ICScraper import ICScraper
 from SheetConfig import SheetConfig
 from lib.exceptions import ScraperException, SheetConfigException
 from lib.util import create_new_filename, upload_file, get_current_ec2_instance_id, shutdown_ec2_instance, \
-    get_current_ec2_instance_region, create_logger
+    get_current_ec2_instance_region, create_logger, create_s3_object_key
 
 # Print separator
 SEP = '-' * 60
@@ -431,7 +431,7 @@ if __name__ == '__main__':
 
     # Upload out_file to s3 bucket
     if upload:
-        object_name = '{}.{}'.format(path.basename(out_file), hostname)
+        object_name = create_s3_object_key(local_file_path=out_file, hostname=hostname)
         try:
             logger.info('Uploading {} to {}/{}'.format(out_file, UPLOAD_BUCKET, object_name))
             upload_file(file_name=out_file, bucket=UPLOAD_BUCKET, object_name=object_name)

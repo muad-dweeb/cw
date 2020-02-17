@@ -66,6 +66,16 @@ def upload_file(file_name, bucket, object_name=None):
         raise e
 
 
+def create_s3_object_key(local_file_path, hostname):
+    # Remove any file extension from the path
+    full_path, extension = path.splitext(local_file_path)
+    # Remove preceding path elements
+    file_name = path.basename(full_path)
+    # Assemble!
+    object_name = '{}.{}.{}'.format(file_name, hostname, extension)
+    return object_name
+
+
 def get_current_ec2_instance_id():
     url = 'http://169.254.169.254/latest/meta-data/instance-id'
     response = requests.request("GET", url)
