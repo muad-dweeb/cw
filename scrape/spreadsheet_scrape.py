@@ -10,6 +10,7 @@ from os import path, getpid
 from re import compile
 from socket import gethostname
 
+from botocore.exceptions import ClientError
 from selenium.common.exceptions import NoSuchWindowException
 
 # from scrape.BVScraper import BVScraper
@@ -19,7 +20,8 @@ from scrape.ICScraper import ICScraper
 from SheetConfig import SheetConfig
 from lib.exceptions import ScraperException, SheetConfigException
 from scrape.util import random_sleep
-from lib.util import create_new_filename, upload_file, get_current_ec2_instance_id, shutdown_ec2_instance
+from lib.util import create_new_filename, upload_file, get_current_ec2_instance_id, shutdown_ec2_instance, \
+    get_current_ec2_instance_region
 
 # Print separator
 SEP = '-' * 60
@@ -443,6 +445,7 @@ if __name__ == '__main__':
     if upload:
         object_name = '{}.{}'.format(out_file, hostname)
         try:
+            print('Uploading {} to {}/{}'.format(out_file, UPLOAD_BUCKET, object_name))
             upload_file(file_name=out_file, bucket=UPLOAD_BUCKET, object_name=object_name)
         except ClientError as e:
             print('S3 upload failed: {}'.format(e))
@@ -460,7 +463,8 @@ if __name__ == '__main__':
 
     if ec2_shutdown:
         instance_id = get_current_ec2_instance_id()
+        instance_region = get_current_ec2_instance_region()
         print(SEP)
         print('Shutting down Instance {} in 10 seconds...'.format(instance_id))
         sleep(10)
-        shutdown_ec2_instance(instance_id=instance_id)
+        shutdown_ec2_instance(instance_id=instance_id, region=instance_region)

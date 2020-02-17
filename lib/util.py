@@ -72,6 +72,13 @@ def get_current_ec2_instance_id():
     return response.text
 
 
-def shutdown_ec2_instance(instance_id):
-    ec2 = boto3.resource('ec2')
+def get_current_ec2_instance_region():
+    url = 'http://169.254.169.254/latest/meta-data/placement/availability-zone'
+    response = requests.request('GET', url)
+    return response.text
+
+
+def shutdown_ec2_instance(instance_id, region):
+    ec2 = boto3.resource('ec2', region_name=region)
     instance = ec2.Instance(instance_id)
+    instance.stop()
