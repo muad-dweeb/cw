@@ -164,9 +164,7 @@ class ICScraper(Scraper):
         main_report = None
         contact_dict = {'phone_numbers': dict(), 'email_addresses': list()}
 
-        # Big green button
-        open_report = search_result.find_element_by_class_name('view-report')
-        open_report.click()
+        self._click_the_button(search_result)
 
         if self._detect_login_page():
             return ScraperException('Account logged out. Discontinuing scrape.')
@@ -182,7 +180,9 @@ class ICScraper(Scraper):
 
             # Simply waiting for the report to load...
             except NoSuchElementException:
+                self.logger.error('Unable to find report. Sleeping for 2 seconds.')
                 time.sleep(2)
+                self._click_the_button(search_result)
 
             # Loaded an error page instead of a report
             for error, message in self._error_strings.items():
@@ -227,5 +227,9 @@ class ICScraper(Scraper):
 
         return contact_dict
 
-
-
+    @staticmethod
+    def _click_the_button(search_result):
+        # Big green button
+        time.sleep(5)
+        open_report_button = search_result.find_element_by_class_name('view-report')
+        open_report_button.click()
