@@ -72,7 +72,7 @@ def create_s3_object_key(local_file_path, hostname):
     # Remove preceding path elements
     file_name = path.basename(full_path)
     # Assemble!
-    object_name = '{}.{}.{}'.format(file_name, hostname, extension)
+    object_name = '{}.{}{}'.format(file_name, hostname, extension)
     return object_name
 
 
