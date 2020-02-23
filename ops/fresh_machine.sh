@@ -65,7 +65,13 @@ exit_on_error $?
 sudo iptables -A INPUT -p tcp --dport 5901 -j ACCEPT
 exit_on_error $?
 
-mkdir ${HOME}/muad-dweeb
+# unnecessary if full repo has already been synced, but whatever
+mkdir -p ${HOME}/muad-dweeb
 exit_on_error $?
 
+# For running cw repo code
+echo '' >> ${HOME}/.bashrc
+echo 'export PYTHONPATH=/home/ubuntu/muad-dweeb/cw' >> ${HOME}/.bashrc
+
+echo 'Rebooting now...'
 sudo reboot now

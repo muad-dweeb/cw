@@ -1,12 +1,15 @@
 import sys
-import traceback
+from time import sleep
+
 from argparse import ArgumentParser
 from copy import deepcopy
 from csv import DictReader, DictWriter
 from datetime import datetime, timedelta
 from os import path, getpid
 from re import compile
+from socket import gethostname
 
+from botocore.exceptions import ClientError
 from selenium.common.exceptions import NoSuchWindowException
 
 # from scrape.BVScraper import BVScraper
@@ -15,14 +18,24 @@ from scrape.FpsScraper import FpsScraper
 from scrape.ICScraper import ICScraper
 from SheetConfig import SheetConfig
 from lib.exceptions import ScraperException, SheetConfigException
-from scrape.util import random_sleep
-from lib.util import create_new_filename
+from lib.util import create_new_filename, upload_file, get_current_ec2_instance_id, shutdown_ec2_instance, \
+    get_current_ec2_instance_region, create_logger, create_s3_object_key
 
+# Print separator
 SEP = '-' * 60
-SITES = {'ic', 'fps'}
+
+# Seconds between searches, randomized to hopefully throw off bot-detection
+SITES = {
+    'fps': {'wait_range_between_rows': (15, 120),
+            'wait_range_between_report_loads': (5, 15)},
+    'ic':  {'wait_range_between_rows': (30, 500),  # 0.5 - 7.5 minutes}
+            'wait_range_between_report_loads': (20, 60)}
+         }
+
+UPLOAD_BUCKET = 'cw-sheets'
 
 
-def validate_config_dict(config_dict):
+def validate_sheet_config_dict(config_dict):
     """
     location, id_column, and id_char_count are pre-validated by the SheetConfig class
     The validated keys here are specific to this CLI's usage
@@ -75,8 +88,8 @@ def get_columns(dict_reader, config_dict):
 
     # Make sure each first name has a corresponding last name and vice-versa
     if len(return_dict['first_names']) != len(return_dict['last_names']):
-        print('first_names column count: {}'.format(len(return_dict['first_names'])))
-        print('last_names column count: {}'.format(len(return_dict['last_names'])))
+        logger.error('first_names column count: {}'.format(len(return_dict['first_names'])))
+        logger.error('last_names column count: {}'.format(len(return_dict['last_names'])))
         raise SheetConfigException('Number of first-name columns must match number of last-name columns!')
 
     # If only one city/state column exists, it will be used for all names,
@@ -118,17 +131,22 @@ if __name__ == '__main__':
     parser.add_argument('--config', required=True, help='Configuration name')
     parser.add_argument('--limit-rows', required=False, type=int, help='Number of Sheet rows to limit scraping to')
     parser.add_argument('--limit-minutes', required=False, type=int, help='Number of minutes to limit scraping to')
-    parser.add_argument('--verbose', default=False, help='Increase print verbosity', action='store_true')
+    parser.add_argument('--debug', default=False, help='Increase logger verbosity', action='store_true')
     parser.add_argument('--auto-close', default=False, help='Close the browser when finished', action='store_true')
     parser.add_argument('--site', required=True, choices=SITES,
                         help='The site to scrape: instantcheckmate.com (ic) or fastpeoplesearch.com (fps)')
+    parser.add_argument('--upload', default=False, action='store_true', help='Upload finished file to s3 bucket')
+    parser.add_argument('--ec2-shutdown', default=False, action='store_true',
+                        help='Shuts off machine if an EC2 Instance')
     args = parser.parse_args()
 
     limit_rows = args.limit_rows
     limit_minutes = args.limit_minutes
-    verbose = args.verbose
+    debug = args.debug
     auto_close = args.auto_close
     site = args.site
+    upload = args.upload
+    ec2_shutdown = args.ec2_shutdown
 
     config = None
     scraper = None
@@ -137,13 +155,9 @@ if __name__ == '__main__':
     scraped_count = 0
     failed_count = 0
 
-    # Seconds between searches, randomized to hopefully throw off bot-detection
-    if site == 'fps':
-        wait_range_between_rows = (15, 120)
-        wait_range_between_report_loads = (5, 15)
-    else:
-        wait_range_between_rows = (30, 500)  # 0.5 - 7.5 minutes
-        wait_range_between_report_loads = (20, 60)
+    logger = create_logger(caller=__file__, debug=debug)
+
+    hostname = gethostname()
 
     # Path to the chromedriver executable; as downloaded by the install_chrome script
     chromedriver_path = path.join(path.dirname(path.dirname(path.abspath(__file__))), 'lib', 'chromedriver')
@@ -157,17 +171,17 @@ if __name__ == '__main__':
     try:
         Caffeine().start(pid)
     except NotImplementedError as e:
-        print('WARNING: {}'.format(e))
+        logger.warning(e)
 
     # Load required files
     try:
         # Config
         config = SheetConfig(args.config)
-        validate_config_dict(config.dict)
+        validate_sheet_config_dict(config.dict)
 
         # Input Sheet
         in_file = path.expanduser(config.location)
-        print('Reading from:   {}'.format(in_file))
+        logger.info('Reading from:   {}'.format(in_file))
         sheet_reader = DictReader(open(path.expanduser(in_file)))
         column_dict = get_columns(sheet_reader, config.dict)
 
@@ -175,69 +189,65 @@ if __name__ == '__main__':
         out_file = create_new_filename(in_path=in_file, overwrite_existing=True)
 
     except SheetConfigException as e:
-        print('Failed to load sheet config \'{}\'. Error: {}'.format(args.config, e))
+        logger.exception('Failed to load sheet config \'{}\'. Error: {}'.format(args.config, e))
         sys.exit(1)
 
     start_time = datetime.now()
-    # TODO: The following print would be rendered obsolete with a decently-formatted logger
-    print('Beginning scrape at {}'.format(start_time))
+    logger.info('Beginning scrape')
 
     # DO THE THING!
     try:
 
         if limit_minutes is not None:
             time_limit = start_time + timedelta(minutes=limit_minutes)
-            print('Run limited to {} minutes'.format(limit_minutes))
-            print('Estimated end at {}'.format(time_limit))
+            logger.info('Run limited to {} minutes'.format(limit_minutes))
+            logger.info('Estimated end at {}'.format(time_limit))
 
         if limit_rows is not None:
-            print('Run limited to {} rows'.format(limit_rows))
+            logger.info('Run limited to {} rows'.format(limit_rows))
 
         # User prompt if out_file already exists; warn of overwrite!
         if path.isfile(out_file):
-            print(SEP)
-            print('WARNING: Output file already exists: {}'.format(out_file))
+            logger.warning('Output file already exists: {}'.format(out_file))
             overwrite = input('Do you wish to overwrite existing file? '
                               'All previous scrapes in this file will be lost! '
                               '(yes/no)\n')
             if overwrite.lower() != 'yes':
-                print('Aborting scrape.')
-                print('Either rename the file you wish to use as input to match the \'location\' value in the config, '
-                      'or edit the config \'location\' value to match the input file you wish to use.')
-                print('Config: {}'.format(args.config))
+                logger.warning('Aborting scrape.')
+                logger.info('Either rename the file you wish to use as input to match the \'location\' value in the '
+                            'config, or edit the config \'location\' value to match the input file you wish to use.')
+                logger.info('Config: {}'.format(args.config))
                 sys.exit()
 
         if site == 'ic':
-            scraper = ICScraper(wait_range=wait_range_between_report_loads, chromedriver_path=chromedriver_path,
-                                time_limit=time_limit, use_proxy=False, verbose=verbose)
+            scraper = ICScraper(logger=logger, wait_range=SITES['ic']['wait_range_between_report_loads'],
+                                chromedriver_path=chromedriver_path, time_limit=time_limit, use_proxy=False)
             scraper.manual_login(cookie_file)
 
         # elif site == 'bv':
-        #     scraper = BVScraper(wait_range=wait_range_between_report_loads, time_limit=time_limit, verbose=verbose)
+        #     scraper = BVScraper(logger=logger, wait_range=wait_range_between_report_loads, time_limit=time_limit)
         #     scraper.auto_login(cookie_file)
 
         elif site == 'fps':
-            scraper = FpsScraper(wait_range=wait_range_between_report_loads, chromedriver_path=chromedriver_path,
-                                 time_limit=time_limit, verbose=verbose)
+            scraper = FpsScraper(logger=logger, wait_range=SITES['fps']['wait_range_between_report_loads'],
+                                 chromedriver_path=chromedriver_path, time_limit=time_limit)
             scraper.auto_login(cookie_file)
 
         else:
-            print('Site \'{}\' not supported. Exiting.'.format(site))
+            logger.error('Site \'{}\' not supported. Exiting.'.format(site))
             sys.exit()
 
         with open(out_file, 'w') as out:
-            print('Writing to:     {}'.format(out_file))
-
-            print(SEP)
+            logger.info('Writing to:     {}'.format(out_file))
 
             last_search = None
             current_search = {'first_name': None, 'last_name': None, 'city': None, 'state': None}
+            contact_columns = {'phone': list(), 'email': list()}
 
             # Output sheet will have at least the input sheet's columns
             output_columns = sheet_reader.fieldnames
 
-            contact_columns = {'phone': list(), 'email': list()}
-
+            # Build initial output column list
             column_index = 0
             while column_index < column_dict['count']:
 
@@ -283,20 +293,22 @@ if __name__ == '__main__':
 
                 # Skip already-scraped rows
                 if 'scraped' in row.keys() and row_should_be_skipped(row_scraped_value=row['scraped']):
-                    if verbose:
-                        print('Skipping row with \'scraped\' value: \'{}\''.format(row['scraped']))
+                    logger.debug('Skipping row {} with \'scraped\' value: \'{}\''.format(row_count, row['scraped']))
                     sheet_writer.writerow(row)
                     continue
 
-                print(SEP)
+                if 'hostname' in row.keys() and row['hostname'] != hostname:
+                    logger.debug('Skipping row {} with hostname \'{}\''.format(row_count, row['hostname']))
+                    sheet_writer.writerow(row)
+                    continue
 
                 # Randomized wait in between searches
                 if scraped_count > 0 and not last_search_was_duplicate and not last_row_was_duplicate:
                     if found_results:
-                        random_sleep(wait_range_between_rows, verbose=verbose)
+                        scraper.random_sleep(SITES[site]['wait_range_between_rows'])
                     else:
                         # A shorter wait time if 0 matching results were found for a row
-                        random_sleep(wait_range_between_report_loads, verbose=verbose)
+                        scraper.random_sleep(SITES[site]['wait_range_between_report_loads'])
 
                 found_results = False
                 output_row = deepcopy(row)
@@ -337,12 +349,11 @@ if __name__ == '__main__':
                         current_search['state'] = state
 
                         if current_search != last_search:
-                            if verbose:
-                                print('Search: {} {}, {} {}'.format(first_name, last_name, city, state))
+                            logger.debug('Search: {} {}, {} {}'.format(first_name, last_name, city, state))
 
                             # Short wait in between all report loads
                             if scraped_count > 1:
-                                random_sleep(wait_range_between_report_loads, verbose=True)
+                                scraper.random_sleep(SITES[site]['wait_range_between_report_loads'])
 
                             # Use the current search params to scrape contact info
                             contact_info = scraper.get_all_info(first=first_name, last=last_name, city=city, state=state)
@@ -351,9 +362,8 @@ if __name__ == '__main__':
                             last_search_was_duplicate = False
 
                         else:
-                            if verbose:
-                                print('\t  Skipping duplicate search...')
-                                last_search_was_duplicate = True
+                            logger.debug('\t  Skipping duplicate search...')
+                            last_search_was_duplicate = True
 
                             # Reuse the last scraped contact info
                             contact_info = scraper.last_contact_info
@@ -364,8 +374,7 @@ if __name__ == '__main__':
 
                 if duplicate_row:
                     last_row_was_duplicate = True
-                    if verbose:
-                        print('\t  Skipping duplicate row...')
+                    logger.debug('\t  Skipping duplicate row...')
                 else:
                     last_row_was_duplicate = False
 
@@ -395,31 +404,41 @@ if __name__ == '__main__':
                 sheet_writer.writerow(output_row)
 
                 if limit_rows is not None and scraped_count >= limit_rows:
-                    print('Row limit ({}) reached!'.format(limit_rows))
+                    logger.info('Row limit ({}) reached!'.format(limit_rows))
                     break
 
                 if time_limit is not None and datetime.now() >= time_limit:
-                    print('Minute limit ({}) reached!'.format(limit_minutes))
+                    logger.info('Minute limit ({}) reached!'.format(limit_minutes))
                     break
 
                 last_row = output_row
 
     except ScraperException as e:
-        print('Scrape failed. Error: {}'.format(e))
+        logger.exception('Scrape failed. Error: {}'.format(e))
 
     except NoSuchWindowException:
-        print('Window was closed prematurely.')
+        logger.error('Window was closed prematurely.')
 
     except KeyboardInterrupt:
-        print('Run interrupted by User.')
+        logger.error('Run interrupted by User.')
 
     except Exception as e:
-        print('Unhandled exception: {}'.format(e))
-        traceback.print_exc()
+        logger.exception('Unhandled exception: {}'.format(e))
 
+    # Close the browser
     if scraper and auto_close:
         scraper.close()
 
+    # Upload out_file to s3 bucket
+    if upload:
+        object_name = create_s3_object_key(local_file_path=out_file, hostname=hostname)
+        try:
+            logger.info('Uploading {} to {}/{}'.format(out_file, UPLOAD_BUCKET, object_name))
+            upload_file(file_name=out_file, bucket=UPLOAD_BUCKET, object_name=object_name)
+        except ClientError as e:
+            logger.exception('S3 upload failed: {}'.format(e))
+
+    # Metrics!
     end_time = datetime.now()
     duration = end_time - start_time
     print(SEP)
@@ -429,3 +448,11 @@ if __name__ == '__main__':
     print('Total rows successfully scraped: {}'.format(scraped_count))
     print('Total rows failed to scrape: {}'.format(failed_count))
     print('Total reports loaded: {}'.format(scraper.reports_loaded))
+
+    # Power down instance to save utilization costs
+    if ec2_shutdown:
+        instance_id = get_current_ec2_instance_id()
+        instance_region = get_current_ec2_instance_region()
+        logger.info('Shutting down Instance {} in 10 seconds...'.format(instance_id))
+        sleep(10)
+        shutdown_ec2_instance(instance_id=instance_id, region=instance_region)
