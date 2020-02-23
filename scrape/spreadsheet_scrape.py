@@ -28,7 +28,7 @@ SEP = '-' * 60
 SITES = {
     'fps': {'wait_range_between_rows': (15, 120),
             'wait_range_between_report_loads': (5, 15)},
-    'ic':  {'wait_range_between_rows': (30, 500),  # 0.5 - 7.5 minutes}
+    'ic':  {'wait_range_between_rows': (30, 420),  # 0.5 - 7 minutes}
             'wait_range_between_report_loads': (20, 60)}
          }
 
