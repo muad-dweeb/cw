@@ -126,36 +126,12 @@ def row_should_be_skipped(row_scraped_value):
         return False
 
 
-if __name__ == '__main__':
-    parser = ArgumentParser()
-    parser.add_argument('--config', required=True, help='Configuration name')
-    parser.add_argument('--limit-rows', required=False, type=int, help='Number of Sheet rows to limit scraping to')
-    parser.add_argument('--limit-minutes', required=False, type=int, help='Number of minutes to limit scraping to')
-    parser.add_argument('--debug', default=False, help='Increase logger verbosity', action='store_true')
-    parser.add_argument('--auto-close', default=False, help='Close the browser when finished', action='store_true')
-    parser.add_argument('--site', required=True, choices=SITES,
-                        help='The site to scrape: instantcheckmate.com (ic) or fastpeoplesearch.com (fps)')
-    parser.add_argument('--upload', default=False, action='store_true', help='Upload finished file to s3 bucket')
-    parser.add_argument('--ec2-shutdown', default=False, action='store_true',
-                        help='Shuts off machine if an EC2 Instance')
-    args = parser.parse_args()
-
-    limit_rows = args.limit_rows
-    limit_minutes = args.limit_minutes
-    debug = args.debug
-    auto_close = args.auto_close
-    site = args.site
-    upload = args.upload
-    ec2_shutdown = args.ec2_shutdown
-
-    config = None
+def main(config_path, limit_rows=None, limit_minutes=None, site=None, auto_close=None, upload=None, ec2_shutdown=None):
     scraper = None
     time_limit = None
     row_count = 0
     scraped_count = 0
     failed_count = 0
-
-    logger = create_logger(caller=__file__, debug=debug)
 
     hostname = gethostname()
 
@@ -176,7 +152,7 @@ if __name__ == '__main__':
     # Load required files
     try:
         # Config
-        config = SheetConfig(args.config)
+        config = SheetConfig(config_path)
         validate_sheet_config_dict(config.dict)
 
         # Input Sheet
@@ -189,7 +165,7 @@ if __name__ == '__main__':
         out_file = create_new_filename(in_path=in_file, overwrite_existing=True)
 
     except SheetConfigException as e:
-        logger.exception('Failed to load sheet config \'{}\'. Error: {}'.format(args.config, e))
+        logger.exception('Failed to load sheet config \'{}\'. Error: {}'.format(config_path, e))
         sys.exit(1)
 
     start_time = datetime.now()
@@ -216,7 +192,7 @@ if __name__ == '__main__':
                 logger.warning('Aborting scrape.')
                 logger.info('Either rename the file you wish to use as input to match the \'location\' value in the '
                             'config, or edit the config \'location\' value to match the input file you wish to use.')
-                logger.info('Config: {}'.format(args.config))
+                logger.info('Config: {}'.format(config_path))
                 sys.exit()
 
         if site == 'ic':
@@ -325,9 +301,9 @@ if __name__ == '__main__':
                     # Skip duplicate rows
                     if last_row is not None:
                         if first_name == last_row[column_dict['first_names'][index]].strip().upper() and \
-                            last_name == last_row[column_dict['last_names'][index]].strip().upper() and \
-                            city == last_row[column_dict['cities'][index]].strip().upper() and \
-                            state == last_row[column_dict['states'][index]].strip().upper():
+                                last_name == last_row[column_dict['last_names'][index]].strip().upper() and \
+                                city == last_row[column_dict['cities'][index]].strip().upper() and \
+                                state == last_row[column_dict['states'][index]].strip().upper():
                             output_row[contact_columns['phone'][contact_index]] = \
                                 last_row[contact_columns['phone'][contact_index]]
                             output_row[contact_columns['email'][contact_index]] = \
@@ -356,7 +332,8 @@ if __name__ == '__main__':
                                 scraper.random_sleep(SITES[site]['wait_range_between_report_loads'])
 
                             # Use the current search params to scrape contact info
-                            contact_info = scraper.get_all_info(first=first_name, last=last_name, city=city, state=state)
+                            contact_info = scraper.get_all_info(first=first_name, last=last_name, city=city,
+                                                                state=state)
 
                             last_search = deepcopy(current_search)
                             last_search_was_duplicate = False
@@ -456,3 +433,28 @@ if __name__ == '__main__':
         logger.info('Shutting down Instance {} in 10 seconds...'.format(instance_id))
         sleep(10)
         shutdown_ec2_instance(instance_id=instance_id, region=instance_region)
+
+
+if __name__ == '__main__':
+    parser = ArgumentParser()
+    parser.add_argument('--config', required=True, help='Configuration name')
+    parser.add_argument('--limit-rows', required=False, type=int, help='Number of Sheet rows to limit scraping to')
+    parser.add_argument('--limit-minutes', required=False, type=int, help='Number of minutes to limit scraping to')
+    parser.add_argument('--debug', default=False, help='Increase logger verbosity', action='store_true')
+    parser.add_argument('--auto-close', default=False, help='Close the browser when finished', action='store_true')
+    parser.add_argument('--site', required=True, choices=SITES,
+                        help='The site to scrape: instantcheckmate.com (ic) or fastpeoplesearch.com (fps)')
+    parser.add_argument('--upload', default=False, action='store_true', help='Upload finished file to s3 bucket')
+    parser.add_argument('--ec2-shutdown', default=False, action='store_true',
+                        help='Shuts off machine if an EC2 Instance')
+    args = parser.parse_args()
+
+    logger = create_logger(caller=__file__, debug=args.debug)
+
+    main(config_path=args.config,
+         limit_rows=args.limit_rows,
+         limit_minutes=args.limit_minutes,
+         site=args.site,
+         auto_close=args.auto_close,
+         upload=args.upload,
+         ec2_shutdown=args.ec2_shutdown)
