@@ -213,8 +213,8 @@ class ICScraper(Scraper):
             except NoSuchElementException:
                 phone_type = 'unknown'
 
-            # Skip fax numbers
-            if phone_type.lower() == 'fax':
+            # Skip undesirable numbers
+            if phone_type.lower() in ('fax', 'voip', 'landline'):
                 continue
 
             contact_dict['phone_numbers'][phone_number] = phone_type

@@ -127,7 +127,7 @@ class Scraper(object):
                 single_info = self.get_info(search_result=search_results[scrape_index])
 
             for number, number_type in single_info['phone_numbers'].items():
-                full_info['phone_numbers'].add('{} ({})'.format(number, number_type))
+                full_info['phone_numbers'].add(number)
 
             for value in single_info['email_addresses']:
                 full_info['email_addresses'].add(value)
