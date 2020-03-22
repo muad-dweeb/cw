@@ -122,9 +122,10 @@ def row_should_be_skipped(row_scraped_value):
 def main(config_path, site, environment, limit_rows=None, limit_minutes=None, auto_close=None):
     scraper = None
     time_limit = None
-    row_count = 0
-    scraped_count = 0
-    failed_count = 0
+
+    metrics = {'row_count': 0,
+               'scraped_count': 0,
+               'failed_count': 0}
 
     hostname = gethostname()
 
@@ -258,28 +259,30 @@ def main(config_path, site, environment, limit_rows=None, limit_minutes=None, au
             # Iterate through rows in the spreadsheet
             for row in sheet_reader:
 
-                row_count += 1
+                metrics['row_count'] += 1
 
                 # Hacky crap
                 # TODO: something about this flag is causing the first row to always say "Skipping duplicate row"
-                if row_count == 1:
+                if metrics['row_count'] == 1:
                     duplicate_row = False
                 else:
                     duplicate_row = True
 
                 # Skip already-scraped rows
                 if 'scraped' in row.keys() and row_should_be_skipped(row_scraped_value=row['scraped']):
-                    logger.debug('Skipping row {} with \'scraped\' value: \'{}\''.format(row_count, row['scraped']))
+                    logger.debug('Skipping row {} with \'scraped\' value: \'{}\''.format(metrics['row_count'],
+                                                                                         row['scraped']))
                     sheet_writer.writerow(row)
                     continue
 
                 if 'hostname' in row.keys() and row['hostname'] != hostname:
-                    logger.debug('Skipping row {} with hostname \'{}\''.format(row_count, row['hostname']))
+                    logger.debug('Skipping row {} with hostname \'{}\''.format(metrics['row_count'],
+                                                                               row['hostname']))
                     sheet_writer.writerow(row)
                     continue
 
                 # Randomized wait in between searches
-                if scraped_count > 0 and not last_search_was_duplicate and not last_row_was_duplicate:
+                if metrics['scraped_count'] > 0 and not last_search_was_duplicate and not last_row_was_duplicate:
                     if found_results:
                         scraper.random_sleep(run_config.wait_range_between_rows)
                     else:
@@ -328,7 +331,7 @@ def main(config_path, site, environment, limit_rows=None, limit_minutes=None, au
                             logger.debug('Search: {} {}, {} {}'.format(first_name, last_name, city, state))
 
                             # Short wait in between all report loads
-                            if scraped_count > 1:
+                            if metrics['scraped_count'] > 1:
                                 scraper.random_sleep(run_config.wait_range_between_report_loads)
 
                             # Use the current search params to scrape contact info
@@ -372,15 +375,15 @@ def main(config_path, site, environment, limit_rows=None, limit_minutes=None, au
                 if found_results:
                     # Mark row as scraped to prevent future re-scrape
                     output_row['scraped'] = site
-                    scraped_count += 1
+                    metrics['scraped_count'] += 1
                 else:
                     output_row['scraped'] = 'failed'
-                    failed_count += 1
+                    metrics['failed_count'] += 1
 
                 # Write out the completed row
                 sheet_writer.writerow(output_row)
 
-                if limit_rows is not None and scraped_count >= limit_rows:
+                if limit_rows is not None and metrics['scraped_count'] >= limit_rows:
                     logger.info('Row limit ({}) reached!'.format(limit_rows))
                     break
 
@@ -416,15 +419,16 @@ def main(config_path, site, environment, limit_rows=None, limit_minutes=None, au
             logger.exception('S3 upload failed: {}'.format(e))
 
     # Metrics!
-    end_time = datetime.now()
-    duration = end_time - start_time
+    metrics['end_time'] = datetime.now()
+    metrics['duration'] = metrics['end_time'] - start_time
+    metrics['reports_loaded'] = scraper.reports_loaded
     print(SEP)
-    print('Scrape completed at {}'.format(end_time))
-    print('Total run time: {}'.format(duration))
-    print('Total rows processed: {}'.format(row_count))
-    print('Total rows successfully scraped: {}'.format(scraped_count))
-    print('Total rows failed to scrape: {}'.format(failed_count))
-    print('Total reports loaded: {}'.format(scraper.reports_loaded))
+    print('Scrape completed at {}'.format(metrics['end_time']))
+    print('Total run time: {}'.format(metrics['duration']))
+    print('Total rows processed: {}'.format(metrics['row_count']))
+    print('Total rows successfully scraped: {}'.format(metrics['scraped_count']))
+    print('Total rows failed to scrape: {}'.format(metrics['failed_count']))
+    print('Total reports loaded: {}'.format(metrics['reports_loaded']))
 
     # Power down instance to save utilization costs
     if environment == 'ec2':
