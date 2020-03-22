@@ -119,7 +119,7 @@ def row_should_be_skipped(row_scraped_value):
         return False
 
 
-def main(config_path, limit_rows=None, limit_minutes=None, site=None, auto_close=None, upload=None, ec2_shutdown=None):
+def main(config_path, site, environment, limit_rows=None, limit_minutes=None, auto_close=None):
     scraper = None
     time_limit = None
     row_count = 0
@@ -407,7 +407,7 @@ def main(config_path, limit_rows=None, limit_minutes=None, site=None, auto_close
         scraper.close()
 
     # Upload out_file to s3 bucket
-    if upload:
+    if environment == 'ec2':
         object_name = create_s3_object_key(local_file_path=out_file, hostname=hostname)
         try:
             logger.info('Uploading {} to {}/{}'.format(out_file, run_config.upload_bucket, object_name))
@@ -427,7 +427,7 @@ def main(config_path, limit_rows=None, limit_minutes=None, site=None, auto_close
     print('Total reports loaded: {}'.format(scraper.reports_loaded))
 
     # Power down instance to save utilization costs
-    if ec2_shutdown:
+    if environment == 'ec2':
         instance_id = get_current_ec2_instance_id()
         instance_region = get_current_ec2_instance_region()
         logger.info('Shutting down Instance {} in 10 seconds...'.format(instance_id))
@@ -444,17 +444,15 @@ if __name__ == '__main__':
     parser.add_argument('--auto-close', default=False, help='Close the browser when finished', action='store_true')
     parser.add_argument('--site', required=True, choices=SUPPORTED_SITES,
                         help='The site to scrape: instantcheckmate.com (ic) or fastpeoplesearch.com (fps)')
-    parser.add_argument('--upload', default=False, action='store_true', help='Upload finished file to s3 bucket')
-    parser.add_argument('--ec2-shutdown', default=False, action='store_true',
-                        help='Shuts off machine if an EC2 Instance')
+    parser.add_argument('--environment', '-e', required=True, choices={'ec2', 'local'})
+
     args = parser.parse_args()
 
     logger = create_logger(caller=__file__, debug=args.debug)
 
     main(config_path=args.config,
+         site=args.site,
+         environment=args.environment,
          limit_rows=args.limit_rows,
          limit_minutes=args.limit_minutes,
-         site=args.site,
-         auto_close=args.auto_close,
-         upload=args.upload,
-         ec2_shutdown=args.ec2_shutdown)
+         auto_close=args.auto_close)
