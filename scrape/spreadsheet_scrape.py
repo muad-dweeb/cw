@@ -22,17 +22,13 @@ from lib.util import create_new_filename, upload_file, get_current_ec2_instance_
     get_current_ec2_instance_region, create_logger, create_s3_object_key
 
 # Print separator
+from scrape.RunConfig import RunConfig
+
+SUPPORTED_SITES = {'fps', 'ic'}
+
 SEP = '-' * 60
 
 # Seconds between searches, randomized to hopefully throw off bot-detection
-SITES = {
-    'fps': {'wait_range_between_rows': (15, 120),
-            'wait_range_between_report_loads': (5, 15)},
-    'ic':  {'wait_range_between_rows': (30, 420),  # 0.5 - 7 minutes}
-            'wait_range_between_report_loads': (20, 60)}
-         }
-
-UPLOAD_BUCKET = 'cw-sheets'
 
 
 def validate_sheet_config_dict(config_dict):
@@ -117,7 +113,7 @@ def row_should_be_skipped(row_scraped_value):
         return False
     elif row_scraped_value.lower() in ('failed', 'skip'):
         return True
-    elif row_scraped_value.lower() in SITES:
+    elif row_scraped_value.lower() in SUPPORTED_SITES:
         return True
     # Legacy compatibility
     elif bool(row_scraped_value) is True:
@@ -151,21 +147,28 @@ def main(config_path, limit_rows=None, limit_minutes=None, site=None, auto_close
 
     # Load required files
     try:
-        # Config
-        config = SheetConfig(config_path)
-        validate_sheet_config_dict(config.dict)
+        # Sheet Config
+        sheet_config = SheetConfig(config_path)
+        validate_sheet_config_dict(sheet_config.dict)
+
+        # Run Config
+        run_config = RunConfig(site_key=site)
 
         # Input Sheet
-        in_file = path.expanduser(config.location)
+        in_file = path.expanduser(sheet_config.location)
         logger.info('Reading from:   {}'.format(in_file))
         sheet_reader = DictReader(open(path.expanduser(in_file)))
-        column_dict = get_columns(sheet_reader, config.dict)
+        column_dict = get_columns(sheet_reader, sheet_config.dict)
 
         # Output Sheet
         out_file = create_new_filename(in_path=in_file, overwrite_existing=True)
 
     except SheetConfigException as e:
         logger.exception('Failed to load sheet config \'{}\'. Error: {}'.format(config_path, e))
+        sys.exit(1)
+
+    except KeyError as e:
+        logger.exception('Failed to load run config \'{}\'. Error: {}'.format(RunConfig.CONFIG_PATH, e))
         sys.exit(1)
 
     start_time = datetime.now()
@@ -196,7 +199,7 @@ def main(config_path, limit_rows=None, limit_minutes=None, site=None, auto_close
                 sys.exit()
 
         if site == 'ic':
-            scraper = ICScraper(logger=logger, wait_range=SITES['ic']['wait_range_between_report_loads'],
+            scraper = ICScraper(logger=logger, wait_range=run_config.wait_range_between_report_loads,
                                 chromedriver_path=chromedriver_path, time_limit=time_limit, use_proxy=False)
             scraper.manual_login(cookie_file)
 
@@ -205,7 +208,7 @@ def main(config_path, limit_rows=None, limit_minutes=None, site=None, auto_close
         #     scraper.auto_login(cookie_file)
 
         elif site == 'fps':
-            scraper = FpsScraper(logger=logger, wait_range=SITES['fps']['wait_range_between_report_loads'],
+            scraper = FpsScraper(logger=logger, wait_range=run_config.wait_range_between_report_loads,
                                  chromedriver_path=chromedriver_path, time_limit=time_limit)
             scraper.auto_login(cookie_file)
 
@@ -281,10 +284,10 @@ def main(config_path, limit_rows=None, limit_minutes=None, site=None, auto_close
                 # Randomized wait in between searches
                 if scraped_count > 0 and not last_search_was_duplicate and not last_row_was_duplicate:
                     if found_results:
-                        scraper.random_sleep(SITES[site]['wait_range_between_rows'])
+                        scraper.random_sleep(run_config.wait_range_between_rows)
                     else:
                         # A shorter wait time if 0 matching results were found for a row
-                        scraper.random_sleep(SITES[site]['wait_range_between_report_loads'])
+                        scraper.random_sleep(run_config.wait_range_between_report_loads)
 
                 found_results = False
                 output_row = deepcopy(row)
@@ -329,7 +332,7 @@ def main(config_path, limit_rows=None, limit_minutes=None, site=None, auto_close
 
                             # Short wait in between all report loads
                             if scraped_count > 1:
-                                scraper.random_sleep(SITES[site]['wait_range_between_report_loads'])
+                                scraper.random_sleep(run_config.wait_range_between_report_loads)
 
                             # Use the current search params to scrape contact info
                             contact_info = scraper.get_all_info(first=first_name, last=last_name, city=city,
@@ -410,8 +413,8 @@ def main(config_path, limit_rows=None, limit_minutes=None, site=None, auto_close
     if upload:
         object_name = create_s3_object_key(local_file_path=out_file, hostname=hostname)
         try:
-            logger.info('Uploading {} to {}/{}'.format(out_file, UPLOAD_BUCKET, object_name))
-            upload_file(file_name=out_file, bucket=UPLOAD_BUCKET, object_name=object_name)
+            logger.info('Uploading {} to {}/{}'.format(out_file, run_config.upload_bucket, object_name))
+            upload_file(file_name=out_file, bucket=run_config.upload_bucket, object_name=object_name)
         except ClientError as e:
             logger.exception('S3 upload failed: {}'.format(e))
 
@@ -442,7 +445,7 @@ if __name__ == '__main__':
     parser.add_argument('--limit-minutes', required=False, type=int, help='Number of minutes to limit scraping to')
     parser.add_argument('--debug', default=False, help='Increase logger verbosity', action='store_true')
     parser.add_argument('--auto-close', default=False, help='Close the browser when finished', action='store_true')
-    parser.add_argument('--site', required=True, choices=SITES,
+    parser.add_argument('--site', required=True, choices=SUPPORTED_SITES,
                         help='The site to scrape: instantcheckmate.com (ic) or fastpeoplesearch.com (fps)')
     parser.add_argument('--upload', default=False, action='store_true', help='Upload finished file to s3 bucket')
     parser.add_argument('--ec2-shutdown', default=False, action='store_true',
