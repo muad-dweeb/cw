@@ -1,6 +1,4 @@
 import sys
-from time import sleep
-
 from argparse import ArgumentParser
 from copy import deepcopy
 from csv import DictReader, DictWriter
@@ -8,27 +6,26 @@ from datetime import datetime, timedelta
 from os import path, getpid
 from re import compile
 from socket import gethostname
+from time import sleep
 
 from botocore.exceptions import ClientError
 from selenium.common.exceptions import NoSuchWindowException
 
-# from scrape.BVScraper import BVScraper
-from scrape.Caffeine import Caffeine
-from scrape.FpsScraper import FpsScraper
-from scrape.ICScraper import ICScraper
 from SheetConfig import SheetConfig
 from lib.exceptions import ScraperException, SheetConfigException
 from lib.util import create_new_filename, upload_file, get_current_ec2_instance_id, shutdown_ec2_instance, \
     get_current_ec2_instance_region, create_logger, create_s3_object_key
-
-# Print separator
+# from scrape.BVScraper import BVScraper
+from scrape.Caffeine import Caffeine
+from scrape.FpsScraper import FpsScraper
+from scrape.ICScraper import ICScraper
 from scrape.RunConfig import RunConfig
+
 
 SUPPORTED_SITES = {'fps', 'ic'}
 
+# Print separator
 SEP = '-' * 60
-
-# Seconds between searches, randomized to hopefully throw off bot-detection
 
 
 def validate_sheet_config_dict(config_dict):
