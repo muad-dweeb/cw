@@ -58,6 +58,7 @@ class EmailReporter(object):
         <body>
         <h1>Run Metrics</h1>
         <p>{}</p>
+        <hr>
         <footer><small><i>{}</i></small></footer>
         </body>
         </html>
