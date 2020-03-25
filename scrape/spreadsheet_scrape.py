@@ -125,7 +125,8 @@ def main(config_path, site, environment, limit_rows=None, limit_minutes=None, au
 
     metrics = {'row_count': 0,
                'scraped_count': 0,
-               'failed_count': 0}
+               'failed_count': 0,
+               'end_time': None}
 
     hostname = gethostname()
 
