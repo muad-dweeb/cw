@@ -5,7 +5,7 @@ from os import path
 class RunConfig(object):
 
     CONFIG_PATH = path.join(path.dirname(path.dirname(path.abspath(__file__))), 'config', 'scrape_run_config.json')
-    REQUIRED_KEYS = {'sites', 'upload_bucket'}
+    REQUIRED_KEYS = {'sites', 'upload_bucket', 'email'}
 
     def __init__(self, site_key):
 
@@ -14,6 +14,8 @@ class RunConfig(object):
         self.wait_range_between_rows = 0
         self.wait_range_between_report_loads = 0
         self.upload_bucket = None
+        self.email_sender = None
+        self.email_recipient = None
 
         self._load_config_json()
 
@@ -33,3 +35,5 @@ class RunConfig(object):
             self.wait_range_between_rows = config_dict['sites'][self._site_key]['wait_range_between_rows']
             self.wait_range_between_report_loads = config_dict['sites'][self._site_key]['wait_range_between_report_loads']
             self.upload_bucket = config_dict['upload_bucket']
+            self.email_sender = config_dict['email']['sender']
+            self.email_recipient = config_dict['email']['recipient']

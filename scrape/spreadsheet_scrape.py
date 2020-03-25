@@ -17,6 +17,7 @@ from lib.util import create_new_filename, upload_file, get_current_ec2_instance_
     get_current_ec2_instance_region, create_logger, create_s3_object_key
 # from scrape.BVScraper import BVScraper
 from scrape.Caffeine import Caffeine
+from scrape.EmailReporter import EmailReporter, EmailReporterException
 from scrape.FpsScraper import FpsScraper
 from scrape.ICScraper import ICScraper
 from scrape.RunConfig import RunConfig
@@ -119,7 +120,7 @@ def row_should_be_skipped(row_scraped_value):
         return False
 
 
-def main(config_path, site, environment, limit_rows=None, limit_minutes=None, auto_close=None):
+def main(config_path, site, environment, limit_rows=None, limit_minutes=None, auto_close=False, email_report=False):
     scraper = None
     time_limit = None
 
@@ -423,6 +424,7 @@ def main(config_path, site, environment, limit_rows=None, limit_minutes=None, au
     metrics['end_time'] = datetime.now()
     metrics['duration'] = metrics['end_time'] - start_time
     metrics['reports_loaded'] = scraper.reports_loaded
+
     print(SEP)
     print('Scrape completed at {}'.format(metrics['end_time']))
     print('Total run time: {}'.format(metrics['duration']))
@@ -430,6 +432,14 @@ def main(config_path, site, environment, limit_rows=None, limit_minutes=None, au
     print('Total rows successfully scraped: {}'.format(metrics['scraped_count']))
     print('Total rows failed to scrape: {}'.format(metrics['failed_count']))
     print('Total reports loaded: {}'.format(metrics['reports_loaded']))
+
+    # Send email report
+    if email_report:
+        try:
+            reporter = EmailReporter(sender=run_config.email_sender, recipient=run_config.email_recipient)
+            reporter.send_report(metrics_dict=metrics)
+        except EmailReporterException as e:
+            logger.exception('Failed to send email: {}'.format(e))
 
     # Power down instance to save utilization costs
     if environment == 'ec2':
@@ -447,6 +457,8 @@ if __name__ == '__main__':
     parser.add_argument('--limit-minutes', required=False, type=int, help='Number of minutes to limit scraping to')
     parser.add_argument('--debug', default=False, help='Increase logger verbosity', action='store_true')
     parser.add_argument('--auto-close', default=False, help='Close the browser when finished', action='store_true')
+    parser.add_argument('--email-report', default=False, help='Send an email report with run metrics',
+                        action='store_true')
     parser.add_argument('--site', required=True, choices=SUPPORTED_SITES,
                         help='The site to scrape: instantcheckmate.com (ic) or fastpeoplesearch.com (fps)')
     parser.add_argument('--environment', '-e', required=True, choices={'ec2', 'local'})
@@ -460,4 +472,5 @@ if __name__ == '__main__':
          environment=args.environment,
          limit_rows=args.limit_rows,
          limit_minutes=args.limit_minutes,
-         auto_close=args.auto_close)
+         auto_close=args.auto_close,
+         email_report=args.email_report)
