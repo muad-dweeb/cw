@@ -2,6 +2,7 @@ import pickle
 import random
 import time
 from datetime import datetime
+from os import path
 
 from selenium import webdriver
 from selenium.common.exceptions import InvalidArgumentException, WebDriverException
@@ -155,3 +156,12 @@ class Scraper(object):
         wait_time = random.uniform(*range_tuple)
         self.logger.debug('Waiting for {} seconds...'.format(round(wait_time, 2)))
         time.sleep(wait_time)
+
+    def save_screenshot(self):
+        """
+        Save a PNG capture of the current window
+        """
+        now = datetime.now().strftime('%Y%m%d_%H%M%S')
+        output_file = path.join(path.dirname(path.dirname(path.abspath(__file__))),
+                                'data', '.{}_screenshot.png'.format(now))
+        self._driver.save_screenshot(output_file)
