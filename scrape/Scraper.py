@@ -165,3 +165,4 @@ class Scraper(object):
         output_file = path.join(path.dirname(path.dirname(path.abspath(__file__))),
                                 'data', '.{}_screenshot.png'.format(now))
         self._driver.save_screenshot(output_file)
+        return output_file

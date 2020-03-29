@@ -124,6 +124,7 @@ def row_should_be_skipped(row_scraped_value):
 def main(config_path, site, environment, limit_rows=None, limit_minutes=None, auto_close=False, email_report=False):
     scraper = None
     time_limit = None
+    screenshot_path = None
 
     metrics = {'row_count': 0,
                'scraped_count': 0,
@@ -398,6 +399,7 @@ def main(config_path, site, environment, limit_rows=None, limit_minutes=None, au
 
     except ScraperException as e:
         logger.exception('Scrape failed. Error: {}'.format(e))
+        screenshot_path = scraper.save_screenshot()
 
     except NoSuchWindowException:
         logger.error('Window was closed prematurely.')
@@ -407,6 +409,7 @@ def main(config_path, site, environment, limit_rows=None, limit_minutes=None, au
 
     except Exception as e:
         logger.exception('Unhandled exception: {}'.format(e))
+        screenshot_path = scraper.save_screenshot()
 
     # Close the browser
     if scraper and auto_close:
@@ -439,7 +442,7 @@ def main(config_path, site, environment, limit_rows=None, limit_minutes=None, au
         output_tail = '\n'.join(logger.cache)
         try:
             reporter = EmailReporter(sender=run_config.email_sender, recipient=run_config.email_recipient)
-            reporter.send_report(metrics_dict=metrics, sample_output=output_tail)
+            reporter.send_report(metrics_dict=metrics, screenshot=screenshot_path, sample_output=output_tail)
         except EmailReporterException as e:
             logger.exception('Failed to send email: {}'.format(e))
 
