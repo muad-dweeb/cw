@@ -34,7 +34,7 @@ class CacheLogger(object):
         self.cache.append(cache_message)
         self._prune_cache()
 
-    def warn(self, message):
+    def warning(self, message):
         cache_message = self._augment_message(message, 'WARNING')
         self._logger.warning(message)
         self.cache.append(cache_message)
