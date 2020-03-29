@@ -12,6 +12,7 @@ from botocore.exceptions import ClientError
 from selenium.common.exceptions import NoSuchWindowException
 
 from SheetConfig import SheetConfig
+from lib.CacheLogger import CacheLogger
 from lib.exceptions import ScraperException, SheetConfigException
 from lib.util import create_new_filename, upload_file, get_current_ec2_instance_id, shutdown_ec2_instance, \
     get_current_ec2_instance_region, create_logger, create_s3_object_key
@@ -437,7 +438,7 @@ def main(config_path, site, environment, limit_rows=None, limit_minutes=None, au
     if email_report:
         try:
             reporter = EmailReporter(sender=run_config.email_sender, recipient=run_config.email_recipient)
-            reporter.send_report(metrics_dict=metrics)
+            reporter.send_report(metrics_dict=metrics, sample_output=logger.cache)
         except EmailReporterException as e:
             logger.exception('Failed to send email: {}'.format(e))
 
@@ -465,7 +466,8 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    logger = create_logger(caller=__file__, debug=args.debug)
+    base_logger = create_logger(caller=__file__, debug=args.debug)
+    logger = CacheLogger(logger=base_logger, cache_limit=10)
 
     main(config_path=args.config,
          site=args.site,
