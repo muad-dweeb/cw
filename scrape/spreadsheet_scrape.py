@@ -436,9 +436,10 @@ def main(config_path, site, environment, limit_rows=None, limit_minutes=None, au
 
     # Send email report
     if email_report:
+        output_tail = '\n'.join(logger.cache)
         try:
             reporter = EmailReporter(sender=run_config.email_sender, recipient=run_config.email_recipient)
-            reporter.send_report(metrics_dict=metrics, sample_output=logger.cache)
+            reporter.send_report(metrics_dict=metrics, sample_output=output_tail)
         except EmailReporterException as e:
             logger.exception('Failed to send email: {}'.format(e))
 
