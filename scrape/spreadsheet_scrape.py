@@ -397,6 +397,8 @@ def main(config_path, site, environment, limit_rows=None, limit_minutes=None, au
 
                 last_row = output_row
 
+        logger.info('Scrape completed without error.')
+
     except ScraperException as e:
         logger.exception('Scrape failed. Error: {}'.format(e))
         screenshot_path = scraper.save_screenshot()
@@ -430,7 +432,6 @@ def main(config_path, site, environment, limit_rows=None, limit_minutes=None, au
     metrics['reports_loaded'] = scraper.reports_loaded
 
     print(SEP)
-    print('Scrape completed at {}'.format(metrics['end_time']))
     print('Total run time: {}'.format(metrics['duration']))
     print('Total rows processed: {}'.format(metrics['row_count']))
     print('Total rows successfully scraped: {}'.format(metrics['scraped_count']))
