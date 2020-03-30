@@ -162,7 +162,7 @@ class Scraper(object):
         Save a PNG capture of the current window
         """
         now = datetime.now().strftime('%Y%m%d_%H%M%S')
-        output_file = path.join(path.dirname(path.dirname(path.abspath(__file__))),
-                                'data', '.{}_screenshot.png'.format(now))
+        output_file = path.join('/tmp', '.{}_screenshot.png'.format(now))
         self._driver.save_screenshot(output_file)
+        self.logger.debug('Screenshot saved to: {}'.format(output_file))
         return output_file
