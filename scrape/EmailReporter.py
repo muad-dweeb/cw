@@ -16,7 +16,7 @@ class EmailReporterException(BaseException):
 
 class EmailReporter(object):
 
-    FOOTER = 'This is an automated message. Replies probably won\'t be read.'
+    FOOTER = 'This is an automated message. Replies probably won\'t be read in a timely manner.'
 
     def __init__(self, sender, recipient):
         self.sender = sender
