@@ -430,7 +430,8 @@ def main(config_path, site, environment, limit_rows=None, limit_minutes=None, au
     metrics['end_time'] = datetime.now()
     metrics['duration'] = metrics['end_time'] - start_time
     metrics['reports_loaded'] = scraper.reports_loaded
-    metrics['avg_reports_loaded_per_hour'] = round(metrics['reports_loaded'] / (metrics['duration'] / 60 / 60), 2)
+    metrics['avg_reports_loaded_per_hour'] = round(metrics['reports_loaded'] /
+                                                   (metrics['duration'].seconds / 60 / 60), 2)
 
     print(SEP)
     print('Total run time: {}'.format(metrics['duration']))
