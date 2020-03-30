@@ -8,6 +8,9 @@ from socket import gethostname
 
 import boto3
 from botocore.exceptions import ClientError
+from requests import ConnectTimeout
+
+from lib.util import get_current_ec2_instance_region
 
 
 class EmailReporterException(BaseException):
@@ -21,7 +24,16 @@ class EmailReporter(object):
     def __init__(self, sender, recipient):
         self.sender = sender
         self.recipient = recipient
-        self._client = boto3.client('ses')
+        self._client = boto3.client('ses', region_name=self.__get_region())
+
+    @staticmethod
+    def __get_region():
+        try:
+            region = get_current_ec2_instance_region()
+        # Timeout generally indicates that this is being run locally, and so there is is no EC2 Instance Region
+        except ConnectTimeout:
+            region = 'us-west-2'
+        return region
 
     @staticmethod
     def __assemble_report_body_text(metrics_dict, sample_output_list=None):
