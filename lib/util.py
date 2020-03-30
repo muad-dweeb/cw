@@ -78,13 +78,13 @@ def create_s3_object_key(local_file_path, hostname):
 
 def get_current_ec2_instance_id():
     url = 'http://169.254.169.254/latest/meta-data/instance-id'
-    response = requests.request("GET", url)
+    response = requests.get(url)
     return response.text
 
 
 def get_current_ec2_instance_region():
     url = 'http://169.254.169.254/latest/meta-data/placement/availability-zone'
-    response = requests.request('GET', url)
+    response = requests.get(url, timeout=10)
     parent_region = response.text.rstrip('abcdefg')
     return parent_region
 
