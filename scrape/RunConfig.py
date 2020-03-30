@@ -20,7 +20,7 @@ class RunConfig(object):
         self._load_config_json()
 
     def _load_config_json(self):
-        with open(RunConfig.CONFIG_PATH, 'r'), as config:
+        with open(RunConfig.CONFIG_PATH, 'r') as config:
             config_dict = json.loads(config.read())
 
             for key in RunConfig.REQUIRED_KEYS:
