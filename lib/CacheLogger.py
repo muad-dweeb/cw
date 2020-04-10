@@ -51,3 +51,7 @@ class CacheLogger(object):
         self._logger.exception(message)
         self.cache.append(cache_message)
         self._prune_cache()
+
+    def append_stack_trace(self, stack_trace_string):
+        stack_trace_string = stack_trace_string.split('\n')
+        self.cache.extend(stack_trace_string)

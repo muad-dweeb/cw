@@ -1,4 +1,5 @@
 import sys
+import traceback
 from argparse import ArgumentParser
 from copy import deepcopy
 from csv import DictReader, DictWriter
@@ -125,6 +126,7 @@ def main(config_path, site, environment, limit_rows=None, limit_minutes=None, au
     scraper = None
     time_limit = None
     screenshot_path = None
+    stack_trace = None
 
     metrics = {'row_count': 0,
                'scraped_count': 0,
@@ -402,6 +404,7 @@ def main(config_path, site, environment, limit_rows=None, limit_minutes=None, au
     except ScraperException as e:
         logger.exception('Scrape failed. Error: {}'.format(e))
         screenshot_path = scraper.save_screenshot()
+        logger.append_stack_trace(traceback.format_exc())
 
     except NoSuchWindowException:
         logger.error('Window was closed prematurely.')
@@ -412,6 +415,7 @@ def main(config_path, site, environment, limit_rows=None, limit_minutes=None, au
     except Exception as e:
         logger.exception('Unhandled exception: {}'.format(e))
         screenshot_path = scraper.save_screenshot()
+        logger.append_stack_trace(traceback.format_exc())
 
     # Close the browser
     if scraper and auto_close:
@@ -473,7 +477,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     base_logger = create_logger(caller=__file__, debug=args.debug)
-    logger = CacheLogger(logger=base_logger, cache_limit=10)
+    logger = CacheLogger(logger=base_logger, cache_limit=5)
 
     main(config_path=args.config,
          site=args.site,
