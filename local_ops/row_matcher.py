@@ -85,4 +85,7 @@ if __name__ == '__main__':
                             help='Allows for substring matches')
     args = arg_parser.parse_args()
 
-    main(master_file=args.master_file, search_file=args.search_file, output_file=args.output_file)
+    main(master_file=args.master_file,
+         search_file=args.search_file,
+         output_file=args.output_file,
+         fuzzy_match=args.fuzzy_match)
