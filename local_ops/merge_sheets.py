@@ -5,7 +5,7 @@ import time
 
 from SheetConfig import SheetConfig
 from lib.exceptions import SheetConfigException, SheetManagerException
-from merge.SheetManager import SheetManager
+from local_ops.SheetManager import SheetManager
 
 if __name__ == '__main__':
     parser = ArgumentParser()
