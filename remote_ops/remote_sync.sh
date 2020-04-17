@@ -54,4 +54,4 @@ verify_file_exists $key_file
 verify_dir_exists $repo_path
 
 
-rsync -e "ssh -i ${key_file}" -av --exclude-from="${SCRIPT_DIR}/rsync_exclusions.txt" ${repo_path} ubuntu@${remote_ip}:/home/ubuntu/muad-dweeb/
+rsync -e "ssh -i ${key_file}" -av --exclude-from="${SCRIPT_DIR}/rsync_exclusions.txt" ${repo_path} ubuntu@${remote_ip}:/home/ubuntu/muad-dweeb/ --delete
