@@ -122,7 +122,7 @@ def row_should_be_skipped(row_scraped_value):
         return False
 
 
-def main(config_path, site, environment, limit_rows=None, limit_minutes=None, limit_info_grabs=30,
+def main(config_path, site, environment, limit_rows=None, limit_minutes=None, limit_info_grabs=20,
          auto_close=False, email_report=False):
     scraper = None
     time_limit = None
