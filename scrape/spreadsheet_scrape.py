@@ -126,12 +126,20 @@ def main(config_path, site, environment, limit_rows=None, limit_minutes=None, au
     scraper = None
     time_limit = None
     screenshot_path = None
-    stack_trace = None
 
     metrics = {'row_count': 0,
                'scraped_count': 0,
                'failed_count': 0,
                'end_time': None}
+
+    # Site string mapping to associated classes
+    scraper_mapping = {'ic': ICScraper,
+                       'fps': FpsScraper}
+
+    # Site validation
+    if site not in scraper_mapping.keys():
+        logger.error('Site \'{}\' not supported. Exiting.'.format(site))
+        sys.exit()
 
     hostname = gethostname()
 
@@ -202,23 +210,12 @@ def main(config_path, site, environment, limit_rows=None, limit_minutes=None, au
                 logger.info('Config: {}'.format(config_path))
                 sys.exit()
 
-        if site == 'ic':
-            scraper = ICScraper(logger=logger, wait_range=run_config.wait_range_between_report_loads,
-                                chromedriver_path=chromedriver_path, time_limit=time_limit, use_proxy=False)
-            scraper.manual_login(cookie_file)
+        # Initialize scraper
+        scraper = scraper_mapping[site](logger=logger, wait_range=run_config.wait_range_between_report_loads,
+                                        chromedriver_path=chromedriver_path, time_limit=time_limit, use_proxy=False)
 
-        # elif site == 'bv':
-        #     scraper = BVScraper(logger=logger, wait_range=wait_range_between_report_loads, time_limit=time_limit)
-        #     scraper.auto_login(cookie_file)
-
-        elif site == 'fps':
-            scraper = FpsScraper(logger=logger, wait_range=run_config.wait_range_between_report_loads,
-                                 chromedriver_path=chromedriver_path, time_limit=time_limit)
-            scraper.auto_login(cookie_file)
-
-        else:
-            logger.error('Site \'{}\' not supported. Exiting.'.format(site))
-            sys.exit()
+        # Login to the site (automatically, or await user input)
+        scraper.login(cookie_file)
 
         with open(out_file, 'w') as out:
             logger.info('Writing to:     {}'.format(out_file))
