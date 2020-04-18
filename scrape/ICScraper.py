@@ -127,6 +127,7 @@ class ICScraper(Scraper):
 
     def find(self, first, last, city, state):
         matches = list()
+        captcha_detected = False
 
         search_url = self.root + '/search/person/?first={}&last={}&city={}&state={}'.format(first, last, city, state)
         try:
@@ -140,9 +141,17 @@ class ICScraper(Scraper):
             return ScraperException('Account logged out. Discontinuing scrape.')
 
         while self._detect_captcha() and (self._time_limit is None or datetime.now() < self._time_limit):
+            captcha_detected = True
             time.sleep(60)
         if self._detect_captcha():
             return ScraperException('Captcha detected. Discontinuing scrape.')
+
+        # Reload the search page after Captcha has been cleared
+        if captcha_detected:
+            try:
+                self._load_page(search_url)
+            except ScraperException as e:
+                raise ScraperException('Failed to load search page: {}. Error: {}'.format(search_url, e))
 
         results_list = self._driver.find_elements_by_class_name('result')
 
@@ -190,6 +199,7 @@ class ICScraper(Scraper):
         report_timeout = 180
         main_report = None
         contact_dict = {'phone_numbers': dict(), 'email_addresses': list()}
+        captcha_detected = False
 
         self._click_the_button(search_result)
 
@@ -213,22 +223,21 @@ class ICScraper(Scraper):
 
             # Simply waiting for the report to load...
             except NoSuchElementException:
-                self.logger.error('Unable to find report. Sleeping for 2 seconds.')
-                time.sleep(2)
-                self._click_the_button(search_result)
+                self.logger.error('Unable to find main-report element.')
 
             # Loaded an error page instead of a report
             for error, message in self._error_strings.items():
                 if message in self._driver.page_source:
 
                     # Something is wrong with this particular report, probably server-side
-                    if error == '500 Error':
-                        self.logger.error('Report broken; 500 Error detected.')
+                    if error in ('500 Error', '404 Error'):
+                        self.logger.error('Report broken; {} detected.'.format(error))
 
                         # Call it a loss and move on
                         return contact_dict
 
                     self.logger.error('{} detected.'.format(error))
+                    # TODO: wait, why am I returning an error string?
                     return error
 
             # Generic time-out
