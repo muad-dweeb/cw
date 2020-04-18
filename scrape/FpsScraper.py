@@ -19,6 +19,9 @@ class FpsScraper(Scraper):
         for key, value in site_specific_error_strings.items():
             self._error_strings[key] = value
 
+    def login(self, cookie_file):
+        return self.auto_login(cookie_file)
+
     def auto_login(self, cookie_file):
         """
         Not really a "login" method, since there's no account wall on fastpeoplesearch.com

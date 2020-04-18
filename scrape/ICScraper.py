@@ -25,6 +25,9 @@ class ICScraper(Scraper):
         for key, value in site_specific_error_strings.items():
             self._error_strings[key] = value
 
+    def login(self, cookie_file):
+        return self.manual_login(cookie_file)
+
     def manual_login(self, cookie_file):
         """
         Just loads the login screen. It's up to the user to enter creds and click the stupid images
@@ -103,6 +106,26 @@ class ICScraper(Scraper):
             return False
         return True
 
+    def _detect_captcha(self):
+        """
+        What can I do to prevent this in the future?
+
+        If you are on a personal connection, like at home, you can run
+        an anti-virus scan on your device to make sure it is not infected with malware.
+
+        If you are at an office or shared network, you can ask the network administrator to run a scan across the
+        network looking for misconfigured or infected devices.
+
+        Another way to prevent getting this page in the future is to use Privacy Pass. You may need to download
+        version 2.0 now from the Chrome Web Store.
+        """
+        try:
+            # Alternative search:  <form class="challenge-form" id="challenge-form"
+            self._driver.find_element_by_id('recaptcha_widget')
+        except NoSuchElementException:
+            return False
+        return True
+
     def find(self, first, last, city, state):
         matches = list()
 
@@ -116,6 +139,11 @@ class ICScraper(Scraper):
             time.sleep(5)
         if self._detect_login_page():
             return ScraperException('Account logged out. Discontinuing scrape.')
+
+        while self._detect_captcha() and (self._time_limit is None or datetime.now() < self._time_limit):
+            time.sleep(5)
+        if self._detect_captcha():
+            return ScraperException('Captcha detected. Discontinuing scrape.')
 
         results_list = self._driver.find_elements_by_class_name('result')
 
@@ -168,6 +196,9 @@ class ICScraper(Scraper):
 
         if self._detect_login_page():
             return ScraperException('Account logged out. Discontinuing scrape.')
+
+        if self._detect_captcha():
+            return ScraperException('Captcha detected. Discontinuing scrape.')
 
         # Verify report generation success
         countdown_begin = time.time()
