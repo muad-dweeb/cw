@@ -9,8 +9,8 @@ from scrape.Scraper import Scraper
 
 class FpsScraper(Scraper):
 
-    def __init__(self, logger, wait_range, chromedriver_path, time_limit=None, use_proxy=True):
-        super().__init__(logger, wait_range, chromedriver_path, time_limit, use_proxy)
+    def __init__(self, logger, wait_range, chromedriver_path, time_limit=None, use_proxy=True, limit_info_grabs=9000):
+        super().__init__(logger, wait_range, chromedriver_path, time_limit, use_proxy, limit_info_grabs)
         self.root = 'https://www.fastpeoplesearch.com/'
 
         site_specific_error_strings = {'Bot Check': 'Are you human?'}

@@ -13,7 +13,7 @@ from scrape.TorProxy import check_ip, TorProxy
 
 class Scraper(object):
 
-    def __init__(self, logger, wait_range, chromedriver_path, time_limit=None, use_proxy=False):
+    def __init__(self, logger, wait_range, chromedriver_path, time_limit=None, use_proxy=False, limit_info_grabs=42):
 
         self.logger = logger
 
@@ -28,9 +28,15 @@ class Scraper(object):
             self._driver = self._spawn_driver_with_proxy()
 
         self.last_contact_info = None
+
         # Seconds between searches, randomized to hopefully throw off bot-detection
         self._wait_range = wait_range
+
+        # Time to halt execution
         self._time_limit = time_limit
+
+        # Maximum number of emails or phone numbers to grab per search
+        self._limit_info_grabs = limit_info_grabs
 
         # Internal metric
         self.reports_loaded = 0
@@ -116,7 +122,9 @@ class Scraper(object):
         self.logger.debug('{} matching results found.'.format(len(search_results)))
 
         # NOTE: New elements are generated each time the search page is loaded, rendering all previous elements stale
-        while scrape_index < len(search_results):
+        while scrape_index < len(search_results) and \
+                len(full_info['phone_numbers']) < self._limit_info_grabs and \
+                len(full_info['email_addresses']) < self._limit_info_grabs:
 
             # Opens Report and generates info dict
             single_info = self.get_info(search_result=search_results[scrape_index])
@@ -143,6 +151,14 @@ class Scraper(object):
             search_results = self.find(first=first, last=last, city=city, state=state)
 
             scrape_index += 1
+
+        if len(full_info['phone_numbers']) >= self._limit_info_grabs:
+            self.logger.info('Phone numbers grabbed exceeds defined limit of {}, '
+                             'moving on to next search.'.format(self._limit_info_grabs))
+
+        if len(full_info['email_addresses']) >= self._limit_info_grabs:
+            self.logger.info('Email addresses grabbed exceeds defined limit of {}, '
+                             'moving on to next search.'.format(self._limit_info_grabs))
 
         self.last_contact_info = full_info
 

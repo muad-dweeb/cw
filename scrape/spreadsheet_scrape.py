@@ -122,7 +122,8 @@ def row_should_be_skipped(row_scraped_value):
         return False
 
 
-def main(config_path, site, environment, limit_rows=None, limit_minutes=None, auto_close=False, email_report=False):
+def main(config_path, site, environment, limit_rows=None, limit_minutes=None, limit_info_grabs=30,
+         auto_close=False, email_report=False):
     scraper = None
     time_limit = None
     screenshot_path = None
@@ -212,7 +213,8 @@ def main(config_path, site, environment, limit_rows=None, limit_minutes=None, au
 
         # Initialize scraper
         scraper = scraper_mapping[site](logger=logger, wait_range=run_config.wait_range_between_report_loads,
-                                        chromedriver_path=chromedriver_path, time_limit=time_limit, use_proxy=False)
+                                        chromedriver_path=chromedriver_path, time_limit=time_limit, use_proxy=False,
+                                        limit_info_grabs=limit_info_grabs)
 
         # Login to the site (automatically, or await user input)
         scraper.login(cookie_file)

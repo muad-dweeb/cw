@@ -12,8 +12,8 @@ from scrape.util import get_config
 
 class ICScraper(Scraper):
 
-    def __init__(self, logger, wait_range, chromedriver_path, time_limit=None, use_proxy=False):
-        super().__init__(logger, wait_range, chromedriver_path, time_limit, use_proxy)
+    def __init__(self, logger, wait_range, chromedriver_path, time_limit=None, use_proxy=False, limit_info_grabs=9000):
+        super().__init__(logger, wait_range, chromedriver_path, time_limit, use_proxy, limit_info_grabs)
         self.root = 'https://www.instantcheckmate.com/dashboard'
 
         site_specific_error_strings = {'404 Error': 'Uh Oh! Looks like something went wrong.',
