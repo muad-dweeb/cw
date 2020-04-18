@@ -120,8 +120,7 @@ class ICScraper(Scraper):
         version 2.0 now from the Chrome Web Store.
         """
         try:
-            # Alternative search:  <form class="challenge-form" id="challenge-form"
-            self._driver.find_element_by_id('recaptcha_widget')
+            self._driver.find_element_by_id('challenge-form')
         except NoSuchElementException:
             return False
         return True
@@ -141,7 +140,7 @@ class ICScraper(Scraper):
             return ScraperException('Account logged out. Discontinuing scrape.')
 
         while self._detect_captcha() and (self._time_limit is None or datetime.now() < self._time_limit):
-            time.sleep(5)
+            time.sleep(60)
         if self._detect_captcha():
             return ScraperException('Captcha detected. Discontinuing scrape.')
 
@@ -197,6 +196,9 @@ class ICScraper(Scraper):
         if self._detect_login_page():
             return ScraperException('Account logged out. Discontinuing scrape.')
 
+        # TODO: This is not working
+        while self._detect_captcha() and (self._time_limit is None or datetime.now() < self._time_limit):
+            time.sleep(60)
         if self._detect_captcha():
             return ScraperException('Captcha detected. Discontinuing scrape.')
 
