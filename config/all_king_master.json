@@ -1,5 +1,5 @@
 {
-	"location": "~/muad-dweeb/cw/data/all_king_co_apt_2-70_units_has_names.csv",
+	"location": "~/muad-dweeb/cw/data/all_king_co_apt_2-70_units.csv",
 	"id_column": "Parcel Number",
 	"id_char_count": 10,
         "first_name_column": "Owner\\d? First Name",
