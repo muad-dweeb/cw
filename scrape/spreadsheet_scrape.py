@@ -1,6 +1,5 @@
 import sys
-from time import sleep
-
+import traceback
 from argparse import ArgumentParser
 from copy import deepcopy
 from csv import DictReader, DictWriter
@@ -8,31 +7,28 @@ from datetime import datetime, timedelta
 from os import path, getpid
 from re import compile
 from socket import gethostname
+from time import sleep
 
 from botocore.exceptions import ClientError
 from selenium.common.exceptions import NoSuchWindowException
 
-# from scrape.BVScraper import BVScraper
-from scrape.Caffeine import Caffeine
-from scrape.FpsScraper import FpsScraper
-from scrape.ICScraper import ICScraper
 from SheetConfig import SheetConfig
+from lib.CacheLogger import CacheLogger
 from lib.exceptions import ScraperException, SheetConfigException
 from lib.util import create_new_filename, upload_file, get_current_ec2_instance_id, shutdown_ec2_instance, \
     get_current_ec2_instance_region, create_logger, create_s3_object_key
+# from scrape.BVScraper import BVScraper
+from scrape.Caffeine import Caffeine
+from scrape.EmailReporter import EmailReporter, EmailReporterException
+from scrape.FpsScraper import FpsScraper
+from scrape.ICScraper import ICScraper
+from scrape.RunConfig import RunConfig
+
+
+SUPPORTED_SITES = {'fps', 'ic'}
 
 # Print separator
 SEP = '-' * 60
-
-# Seconds between searches, randomized to hopefully throw off bot-detection
-SITES = {
-    'fps': {'wait_range_between_rows': (15, 120),
-            'wait_range_between_report_loads': (5, 15)},
-    'ic':  {'wait_range_between_rows': (30, 420),  # 0.5 - 7 minutes}
-            'wait_range_between_report_loads': (20, 60)}
-         }
-
-UPLOAD_BUCKET = 'cw-sheets'
 
 
 def validate_sheet_config_dict(config_dict):
@@ -117,7 +113,7 @@ def row_should_be_skipped(row_scraped_value):
         return False
     elif row_scraped_value.lower() in ('failed', 'skip'):
         return True
-    elif row_scraped_value.lower() in SITES:
+    elif row_scraped_value.lower() in SUPPORTED_SITES:
         return True
     # Legacy compatibility
     elif bool(row_scraped_value) is True:
@@ -126,36 +122,25 @@ def row_should_be_skipped(row_scraped_value):
         return False
 
 
-if __name__ == '__main__':
-    parser = ArgumentParser()
-    parser.add_argument('--config', required=True, help='Configuration name')
-    parser.add_argument('--limit-rows', required=False, type=int, help='Number of Sheet rows to limit scraping to')
-    parser.add_argument('--limit-minutes', required=False, type=int, help='Number of minutes to limit scraping to')
-    parser.add_argument('--debug', default=False, help='Increase logger verbosity', action='store_true')
-    parser.add_argument('--auto-close', default=False, help='Close the browser when finished', action='store_true')
-    parser.add_argument('--site', required=True, choices=SITES,
-                        help='The site to scrape: instantcheckmate.com (ic) or fastpeoplesearch.com (fps)')
-    parser.add_argument('--upload', default=False, action='store_true', help='Upload finished file to s3 bucket')
-    parser.add_argument('--ec2-shutdown', default=False, action='store_true',
-                        help='Shuts off machine if an EC2 Instance')
-    args = parser.parse_args()
-
-    limit_rows = args.limit_rows
-    limit_minutes = args.limit_minutes
-    debug = args.debug
-    auto_close = args.auto_close
-    site = args.site
-    upload = args.upload
-    ec2_shutdown = args.ec2_shutdown
-
-    config = None
+def main(config_path, site, environment, limit_rows=None, limit_minutes=None, limit_info_grabs=20,
+         auto_close=False, email_report=False):
     scraper = None
     time_limit = None
-    row_count = 0
-    scraped_count = 0
-    failed_count = 0
+    screenshot_path = None
 
-    logger = create_logger(caller=__file__, debug=debug)
+    metrics = {'row_count': 0,
+               'scraped_count': 0,
+               'failed_count': 0,
+               'end_time': None}
+
+    # Site string mapping to associated classes
+    scraper_mapping = {'ic': ICScraper,
+                       'fps': FpsScraper}
+
+    # Site validation
+    if site not in scraper_mapping.keys():
+        logger.error('Site \'{}\' not supported. Exiting.'.format(site))
+        sys.exit()
 
     hostname = gethostname()
 
@@ -175,21 +160,28 @@ if __name__ == '__main__':
 
     # Load required files
     try:
-        # Config
-        config = SheetConfig(args.config)
-        validate_sheet_config_dict(config.dict)
+        # Sheet Config
+        sheet_config = SheetConfig(config_path)
+        validate_sheet_config_dict(sheet_config.dict)
+
+        # Run Config
+        run_config = RunConfig(site_key=site)
 
         # Input Sheet
-        in_file = path.expanduser(config.location)
+        in_file = path.expanduser(sheet_config.location)
         logger.info('Reading from:   {}'.format(in_file))
         sheet_reader = DictReader(open(path.expanduser(in_file)))
-        column_dict = get_columns(sheet_reader, config.dict)
+        column_dict = get_columns(sheet_reader, sheet_config.dict)
 
         # Output Sheet
         out_file = create_new_filename(in_path=in_file, overwrite_existing=True)
 
     except SheetConfigException as e:
-        logger.exception('Failed to load sheet config \'{}\'. Error: {}'.format(args.config, e))
+        logger.exception('Failed to load sheet config \'{}\'. Error: {}'.format(config_path, e))
+        sys.exit(1)
+
+    except KeyError as e:
+        logger.exception('Failed to load run config \'{}\'. Error: {}'.format(RunConfig.CONFIG_PATH, e))
         sys.exit(1)
 
     start_time = datetime.now()
@@ -216,26 +208,16 @@ if __name__ == '__main__':
                 logger.warning('Aborting scrape.')
                 logger.info('Either rename the file you wish to use as input to match the \'location\' value in the '
                             'config, or edit the config \'location\' value to match the input file you wish to use.')
-                logger.info('Config: {}'.format(args.config))
+                logger.info('Config: {}'.format(config_path))
                 sys.exit()
 
-        if site == 'ic':
-            scraper = ICScraper(logger=logger, wait_range=SITES['ic']['wait_range_between_report_loads'],
-                                chromedriver_path=chromedriver_path, time_limit=time_limit, use_proxy=False)
-            scraper.manual_login(cookie_file)
+        # Initialize scraper
+        scraper = scraper_mapping[site](logger=logger, wait_range=run_config.wait_range_between_report_loads,
+                                        chromedriver_path=chromedriver_path, time_limit=time_limit, use_proxy=False,
+                                        limit_info_grabs=limit_info_grabs)
 
-        # elif site == 'bv':
-        #     scraper = BVScraper(logger=logger, wait_range=wait_range_between_report_loads, time_limit=time_limit)
-        #     scraper.auto_login(cookie_file)
-
-        elif site == 'fps':
-            scraper = FpsScraper(logger=logger, wait_range=SITES['fps']['wait_range_between_report_loads'],
-                                 chromedriver_path=chromedriver_path, time_limit=time_limit)
-            scraper.auto_login(cookie_file)
-
-        else:
-            logger.error('Site \'{}\' not supported. Exiting.'.format(site))
-            sys.exit()
+        # Login to the site (automatically, or await user input)
+        scraper.login(cookie_file)
 
         with open(out_file, 'w') as out:
             logger.info('Writing to:     {}'.format(out_file))
@@ -282,33 +264,35 @@ if __name__ == '__main__':
             # Iterate through rows in the spreadsheet
             for row in sheet_reader:
 
-                row_count += 1
+                metrics['row_count'] += 1
 
                 # Hacky crap
                 # TODO: something about this flag is causing the first row to always say "Skipping duplicate row"
-                if row_count == 1:
+                if metrics['row_count'] == 1:
                     duplicate_row = False
                 else:
                     duplicate_row = True
 
                 # Skip already-scraped rows
                 if 'scraped' in row.keys() and row_should_be_skipped(row_scraped_value=row['scraped']):
-                    logger.debug('Skipping row {} with \'scraped\' value: \'{}\''.format(row_count, row['scraped']))
+                    logger.debug('Skipping row {} with \'scraped\' value: \'{}\''.format(metrics['row_count'],
+                                                                                         row['scraped']))
                     sheet_writer.writerow(row)
                     continue
 
                 if 'hostname' in row.keys() and row['hostname'] != hostname:
-                    logger.debug('Skipping row {} with hostname \'{}\''.format(row_count, row['hostname']))
+                    logger.debug('Skipping row {} with hostname \'{}\''.format(metrics['row_count'],
+                                                                               row['hostname']))
                     sheet_writer.writerow(row)
                     continue
 
                 # Randomized wait in between searches
-                if scraped_count > 0 and not last_search_was_duplicate and not last_row_was_duplicate:
+                if metrics['scraped_count'] > 0 and not last_search_was_duplicate and not last_row_was_duplicate:
                     if found_results:
-                        scraper.random_sleep(SITES[site]['wait_range_between_rows'])
+                        scraper.random_sleep(run_config.wait_range_between_rows)
                     else:
                         # A shorter wait time if 0 matching results were found for a row
-                        scraper.random_sleep(SITES[site]['wait_range_between_report_loads'])
+                        scraper.random_sleep(run_config.wait_range_between_report_loads)
 
                 found_results = False
                 output_row = deepcopy(row)
@@ -325,9 +309,9 @@ if __name__ == '__main__':
                     # Skip duplicate rows
                     if last_row is not None:
                         if first_name == last_row[column_dict['first_names'][index]].strip().upper() and \
-                            last_name == last_row[column_dict['last_names'][index]].strip().upper() and \
-                            city == last_row[column_dict['cities'][index]].strip().upper() and \
-                            state == last_row[column_dict['states'][index]].strip().upper():
+                                last_name == last_row[column_dict['last_names'][index]].strip().upper() and \
+                                city == last_row[column_dict['cities'][index]].strip().upper() and \
+                                state == last_row[column_dict['states'][index]].strip().upper():
                             output_row[contact_columns['phone'][contact_index]] = \
                                 last_row[contact_columns['phone'][contact_index]]
                             output_row[contact_columns['email'][contact_index]] = \
@@ -352,11 +336,12 @@ if __name__ == '__main__':
                             logger.debug('Search: {} {}, {} {}'.format(first_name, last_name, city, state))
 
                             # Short wait in between all report loads
-                            if scraped_count > 1:
-                                scraper.random_sleep(SITES[site]['wait_range_between_report_loads'])
+                            if metrics['scraped_count'] > 1:
+                                scraper.random_sleep(run_config.wait_range_between_report_loads)
 
                             # Use the current search params to scrape contact info
-                            contact_info = scraper.get_all_info(first=first_name, last=last_name, city=city, state=state)
+                            contact_info = scraper.get_all_info(first=first_name, last=last_name, city=city,
+                                                                state=state)
 
                             last_search = deepcopy(current_search)
                             last_search_was_duplicate = False
@@ -395,15 +380,15 @@ if __name__ == '__main__':
                 if found_results:
                     # Mark row as scraped to prevent future re-scrape
                     output_row['scraped'] = site
-                    scraped_count += 1
+                    metrics['scraped_count'] += 1
                 else:
                     output_row['scraped'] = 'failed'
-                    failed_count += 1
+                    metrics['failed_count'] += 1
 
                 # Write out the completed row
                 sheet_writer.writerow(output_row)
 
-                if limit_rows is not None and scraped_count >= limit_rows:
+                if limit_rows is not None and metrics['scraped_count'] >= limit_rows:
                     logger.info('Row limit ({}) reached!'.format(limit_rows))
                     break
 
@@ -413,8 +398,12 @@ if __name__ == '__main__':
 
                 last_row = output_row
 
+        logger.info('Scrape completed without error.')
+
     except ScraperException as e:
         logger.exception('Scrape failed. Error: {}'.format(e))
+        screenshot_path = scraper.save_screenshot()
+        logger.append_stack_trace(traceback.format_exc())
 
     except NoSuchWindowException:
         logger.error('Window was closed prematurely.')
@@ -424,35 +413,76 @@ if __name__ == '__main__':
 
     except Exception as e:
         logger.exception('Unhandled exception: {}'.format(e))
+        screenshot_path = scraper.save_screenshot()
+        logger.append_stack_trace(traceback.format_exc())
 
     # Close the browser
     if scraper and auto_close:
         scraper.close()
 
     # Upload out_file to s3 bucket
-    if upload:
+    if environment == 'ec2':
         object_name = create_s3_object_key(local_file_path=out_file, hostname=hostname)
         try:
-            logger.info('Uploading {} to {}/{}'.format(out_file, UPLOAD_BUCKET, object_name))
-            upload_file(file_name=out_file, bucket=UPLOAD_BUCKET, object_name=object_name)
+            logger.info('Uploading {} to {}/{}'.format(out_file, run_config.upload_bucket, object_name))
+            upload_file(file_name=out_file, bucket=run_config.upload_bucket, object_name=object_name)
         except ClientError as e:
             logger.exception('S3 upload failed: {}'.format(e))
 
     # Metrics!
-    end_time = datetime.now()
-    duration = end_time - start_time
+    metrics['end_time'] = datetime.now()
+    metrics['duration'] = metrics['end_time'] - start_time
+    metrics['reports_loaded'] = scraper.reports_loaded
+    metrics['avg_reports_loaded_per_hour'] = round(metrics['reports_loaded'] /
+                                                   (metrics['duration'].seconds / 60 / 60), 2)
+
     print(SEP)
-    print('Scrape completed at {}'.format(end_time))
-    print('Total run time: {}'.format(duration))
-    print('Total rows processed: {}'.format(row_count))
-    print('Total rows successfully scraped: {}'.format(scraped_count))
-    print('Total rows failed to scrape: {}'.format(failed_count))
-    print('Total reports loaded: {}'.format(scraper.reports_loaded))
+    print('Total run time: {}'.format(metrics['duration']))
+    print('Total rows processed: {}'.format(metrics['row_count']))
+    print('Total rows successfully scraped: {}'.format(metrics['scraped_count']))
+    print('Total rows failed to scrape: {}'.format(metrics['failed_count']))
+    print('Total reports loaded: {}'.format(metrics['reports_loaded']))
+
+    # Send email report
+    if email_report:
+        try:
+            reporter = EmailReporter(sender=run_config.email_sender, recipient=run_config.email_recipient)
+            reporter.send_report(metrics_dict=metrics, screenshot=screenshot_path, sample_output_list=logger.cache)
+            logger.info('Report sent to {}'.format(run_config.email_recipient))
+        except EmailReporterException as e:
+            logger.exception('Failed to send email: {}'.format(e))
 
     # Power down instance to save utilization costs
-    if ec2_shutdown:
+    if environment == 'ec2':
         instance_id = get_current_ec2_instance_id()
         instance_region = get_current_ec2_instance_region()
         logger.info('Shutting down Instance {} in 10 seconds...'.format(instance_id))
         sleep(10)
         shutdown_ec2_instance(instance_id=instance_id, region=instance_region)
+
+
+if __name__ == '__main__':
+    parser = ArgumentParser()
+    parser.add_argument('--config', required=True, help='Configuration name')
+    parser.add_argument('--limit-rows', required=False, type=int, help='Number of Sheet rows to limit scraping to')
+    parser.add_argument('--limit-minutes', required=False, type=int, help='Number of minutes to limit scraping to')
+    parser.add_argument('--debug', default=False, help='Increase logger verbosity', action='store_true')
+    parser.add_argument('--auto-close', default=False, help='Close the browser when finished', action='store_true')
+    parser.add_argument('--email-report', default=False, help='Send an email report with run metrics',
+                        action='store_true')
+    parser.add_argument('--site', required=True, choices=SUPPORTED_SITES,
+                        help='The site to scrape: instantcheckmate.com (ic) or fastpeoplesearch.com (fps)')
+    parser.add_argument('--environment', '-e', required=True, choices={'ec2', 'local'})
+
+    args = parser.parse_args()
+
+    base_logger = create_logger(caller=__file__, debug=args.debug)
+    logger = CacheLogger(logger=base_logger, cache_limit=5)
+
+    main(config_path=args.config,
+         site=args.site,
+         environment=args.environment,
+         limit_rows=args.limit_rows,
+         limit_minutes=args.limit_minutes,
+         auto_close=args.auto_close,
+         email_report=args.email_report)

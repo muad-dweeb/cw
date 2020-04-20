@@ -12,8 +12,8 @@ from scrape.util import get_config
 
 class ICScraper(Scraper):
 
-    def __init__(self, logger, wait_range, chromedriver_path, time_limit=None, use_proxy=False):
-        super().__init__(logger, wait_range, chromedriver_path, time_limit, use_proxy)
+    def __init__(self, logger, wait_range, chromedriver_path, time_limit=None, use_proxy=False, limit_info_grabs=9000):
+        super().__init__(logger, wait_range, chromedriver_path, time_limit, use_proxy, limit_info_grabs)
         self.root = 'https://www.instantcheckmate.com/dashboard'
 
         site_specific_error_strings = {'404 Error': 'Uh Oh! Looks like something went wrong.',
@@ -24,6 +24,9 @@ class ICScraper(Scraper):
         # Add to the base class error dict
         for key, value in site_specific_error_strings.items():
             self._error_strings[key] = value
+
+    def login(self, cookie_file):
+        return self.manual_login(cookie_file)
 
     def manual_login(self, cookie_file):
         """
@@ -103,8 +106,28 @@ class ICScraper(Scraper):
             return False
         return True
 
+    def _detect_captcha(self):
+        """
+        What can I do to prevent this in the future?
+
+        If you are on a personal connection, like at home, you can run
+        an anti-virus scan on your device to make sure it is not infected with malware.
+
+        If you are at an office or shared network, you can ask the network administrator to run a scan across the
+        network looking for misconfigured or infected devices.
+
+        Another way to prevent getting this page in the future is to use Privacy Pass. You may need to download
+        version 2.0 now from the Chrome Web Store.
+        """
+        try:
+            self._driver.find_element_by_id('challenge-form')
+        except NoSuchElementException:
+            return False
+        return True
+
     def find(self, first, last, city, state):
         matches = list()
+        captcha_detected = False
 
         search_url = self.root + '/search/person/?first={}&last={}&city={}&state={}'.format(first, last, city, state)
         try:
@@ -116,6 +139,19 @@ class ICScraper(Scraper):
             time.sleep(5)
         if self._detect_login_page():
             return ScraperException('Account logged out. Discontinuing scrape.')
+
+        while self._detect_captcha() and (self._time_limit is None or datetime.now() < self._time_limit):
+            captcha_detected = True
+            time.sleep(60)
+        if self._detect_captcha():
+            return ScraperException('Captcha detected. Discontinuing scrape.')
+
+        # Reload the search page after Captcha has been cleared
+        if captcha_detected:
+            try:
+                self._load_page(search_url)
+            except ScraperException as e:
+                raise ScraperException('Failed to load search page: {}. Error: {}'.format(search_url, e))
 
         results_list = self._driver.find_elements_by_class_name('result')
 
@@ -163,11 +199,18 @@ class ICScraper(Scraper):
         report_timeout = 180
         main_report = None
         contact_dict = {'phone_numbers': dict(), 'email_addresses': list()}
+        captcha_detected = False
 
         self._click_the_button(search_result)
 
         if self._detect_login_page():
             return ScraperException('Account logged out. Discontinuing scrape.')
+
+        # TODO: This is not working
+        while self._detect_captcha() and (self._time_limit is None or datetime.now() < self._time_limit):
+            time.sleep(60)
+        if self._detect_captcha():
+            return ScraperException('Captcha detected. Discontinuing scrape.')
 
         # Verify report generation success
         countdown_begin = time.time()
@@ -180,22 +223,21 @@ class ICScraper(Scraper):
 
             # Simply waiting for the report to load...
             except NoSuchElementException:
-                self.logger.error('Unable to find report. Sleeping for 2 seconds.')
-                time.sleep(2)
-                self._click_the_button(search_result)
+                self.logger.error('Unable to find main-report element.')
 
             # Loaded an error page instead of a report
             for error, message in self._error_strings.items():
                 if message in self._driver.page_source:
 
                     # Something is wrong with this particular report, probably server-side
-                    if error == '500 Error':
-                        self.logger.error('Report broken; 500 Error detected.')
+                    if error in ('500 Error', '404 Error'):
+                        self.logger.error('Report broken; {} detected.'.format(error))
 
                         # Call it a loss and move on
                         return contact_dict
 
                     self.logger.error('{} detected.'.format(error))
+                    # TODO: wait, why am I returning an error string?
                     return error
 
             # Generic time-out
@@ -213,8 +255,8 @@ class ICScraper(Scraper):
             except NoSuchElementException:
                 phone_type = 'unknown'
 
-            # Skip fax numbers
-            if phone_type.lower() == 'fax':
+            # Skip undesirable numbers
+            if phone_type.lower() in ('fax', 'voip', 'landline', 'unknown'):
                 continue
 
             contact_dict['phone_numbers'][phone_number] = phone_type

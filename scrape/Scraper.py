@@ -2,6 +2,7 @@ import pickle
 import random
 import time
 from datetime import datetime
+from os import path
 
 from selenium import webdriver
 from selenium.common.exceptions import InvalidArgumentException, WebDriverException
@@ -12,7 +13,7 @@ from scrape.TorProxy import check_ip, TorProxy
 
 class Scraper(object):
 
-    def __init__(self, logger, wait_range, chromedriver_path, time_limit=None, use_proxy=False):
+    def __init__(self, logger, wait_range, chromedriver_path, time_limit=None, use_proxy=False, limit_info_grabs=42):
 
         self.logger = logger
 
@@ -27,9 +28,15 @@ class Scraper(object):
             self._driver = self._spawn_driver_with_proxy()
 
         self.last_contact_info = None
+
         # Seconds between searches, randomized to hopefully throw off bot-detection
         self._wait_range = wait_range
+
+        # Time to halt execution
         self._time_limit = time_limit
+
+        # Maximum number of emails or phone numbers to grab per search
+        self._limit_info_grabs = limit_info_grabs
 
         # Internal metric
         self.reports_loaded = 0
@@ -115,7 +122,9 @@ class Scraper(object):
         self.logger.debug('{} matching results found.'.format(len(search_results)))
 
         # NOTE: New elements are generated each time the search page is loaded, rendering all previous elements stale
-        while scrape_index < len(search_results):
+        while scrape_index < len(search_results) and \
+                len(full_info['phone_numbers']) < self._limit_info_grabs and \
+                len(full_info['email_addresses']) < self._limit_info_grabs:
 
             # Opens Report and generates info dict
             single_info = self.get_info(search_result=search_results[scrape_index])
@@ -127,7 +136,7 @@ class Scraper(object):
                 single_info = self.get_info(search_result=search_results[scrape_index])
 
             for number, number_type in single_info['phone_numbers'].items():
-                full_info['phone_numbers'].add('{} ({})'.format(number, number_type))
+                full_info['phone_numbers'].add(number)
 
             for value in single_info['email_addresses']:
                 full_info['email_addresses'].add(value)
@@ -143,6 +152,14 @@ class Scraper(object):
 
             scrape_index += 1
 
+        if len(full_info['phone_numbers']) >= self._limit_info_grabs:
+            self.logger.info('Phone numbers grabbed exceeds defined limit of {}, '
+                             'moving on to next search.'.format(self._limit_info_grabs))
+
+        if len(full_info['email_addresses']) >= self._limit_info_grabs:
+            self.logger.info('Email addresses grabbed exceeds defined limit of {}, '
+                             'moving on to next search.'.format(self._limit_info_grabs))
+
         self.last_contact_info = full_info
 
         return full_info
@@ -155,3 +172,13 @@ class Scraper(object):
         wait_time = random.uniform(*range_tuple)
         self.logger.debug('Waiting for {} seconds...'.format(round(wait_time, 2)))
         time.sleep(wait_time)
+
+    def save_screenshot(self):
+        """
+        Save a PNG capture of the current window
+        """
+        now = datetime.now().strftime('%Y%m%d_%H%M%S')
+        output_file = path.join('/tmp', '.{}_screenshot.png'.format(now))
+        self._driver.save_screenshot(output_file)
+        self.logger.debug('Screenshot saved to: {}'.format(output_file))
+        return output_file

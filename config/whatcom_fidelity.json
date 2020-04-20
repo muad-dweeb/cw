@@ -1,0 +1,9 @@
+{
+    "location": "~/muad-dweeb/cw/data/whatcom_fidelity.csv",
+    "id_column": "APN",
+    "id_char_count": 16,
+    "first_name_column": "Owner1FName",
+    "last_name_column": "Owner1LName",
+    "state_column": "MState",
+    "city_column": "MCity"
+}
