@@ -1,6 +1,7 @@
 cw.egg-info
 data/*.pkl
 data/*2020*.csv
+data/temp
 experiments
 lib/chromedriver*
 lib/googlechrome*
