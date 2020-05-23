@@ -256,7 +256,8 @@ class ICScraper(Scraper):
                 phone_type = 'unknown'
 
             # Skip undesirable numbers
-            if phone_type.lower() in ('fax', 'voip', 'landline', 'unknown'):
+            # if phone_type.lower() in ('fax', 'voip', 'landline', 'unknown'):
+            if phone_type.lower() == 'fax':
                 continue
 
             contact_dict['phone_numbers'][phone_number] = phone_type
