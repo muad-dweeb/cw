@@ -10,7 +10,7 @@ from socket import gethostname
 from time import sleep
 
 from botocore.exceptions import ClientError
-from selenium.common.exceptions import NoSuchWindowException
+from selenium.common.exceptions import NoSuchWindowException, WebDriverException
 
 from SheetConfig import SheetConfig
 from lib.CacheLogger import CacheLogger
@@ -413,15 +413,18 @@ def main(config_path, site, environment, limit_rows=None, limit_minutes=None, li
 
     except Exception as e:
         logger.exception('Unhandled exception: {}'.format(e))
-        screenshot_path = scraper.save_screenshot()
         logger.append_stack_trace(traceback.format_exc())
+        try:
+            screenshot_path = scraper.save_screenshot()
+        except WebDriverException as e:
+            logger.error('Unable to save screenshot. {}'.format(e))
 
     # Close the browser
     if scraper and auto_close:
         scraper.close()
 
     # Upload out_file to s3 bucket
-    if environment == 'ec2':
+    if environment == 'ec2' and path.isfile(out_file):
         object_name = create_s3_object_key(local_file_path=out_file, hostname=hostname)
         try:
             logger.info('Uploading {} to {}/{}'.format(out_file, run_config.upload_bucket, object_name))
@@ -476,8 +479,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    base_logger = create_logger(caller=__file__, debug=args.debug)
-    logger = CacheLogger(logger=base_logger, cache_limit=5)
+    logger = CacheLogger(caller=__file__, cache_limit=5, debug=args.debug)
 
     main(config_path=args.config,
          site=args.site,
