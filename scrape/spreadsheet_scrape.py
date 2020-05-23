@@ -476,8 +476,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    base_logger = create_logger(caller=__file__, debug=args.debug)
-    logger = CacheLogger(logger=base_logger, cache_limit=5)
+    logger = CacheLogger(caller=__file__, cache_limit=5, debug=args.debug)
 
     main(config_path=args.config,
          site=args.site,
