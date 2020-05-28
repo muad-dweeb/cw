@@ -75,3 +75,11 @@ fi
 export PYTHONPATH=${SCRIPT_DIR}
 
 ${VENV_ROOT}/bin/python ${SCRIPT_DIR}/install/install_chrome.py
+
+
+##################
+#  Add Crontab   #
+##################
+
+echo "Installing crontab"
+crontab ${SCRIPT_DIR}/lib/crontab
