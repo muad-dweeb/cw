@@ -1,7 +1,7 @@
 # Remote Deploy
 
-* For a bare-bones Ubuntu 16.04 server (EC2 tested), use `ops/fresh_machine.sh` to configure the server as a graphical desktop with VNC connectivity
 * Use `ops/remote_sync.sh` to sync the full repo to the remote server
+* For a bare-bones Ubuntu 16.04 server (EC2 tested), use `ops/fresh_machine.sh` to configure the server as a graphical desktop with VNC connectivity
 
 # Setup
 
