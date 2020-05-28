@@ -1,0 +1,2 @@
+# auto gc of local cw data
+0 0 * * * find ${HOME}/muad-dweeb/cw/data/*$(date +%Y)*.csv -mtime +10 -type f -delete
