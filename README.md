@@ -21,9 +21,11 @@ Unable to automatically clear Captchas! As such, babysitting is required and rem
 
 Recommend to sort the input sheet by owner last-name/first-name to prevent duplicate scrapes beforehand. 
 
-`cd ~/muad-dweeb/cw`
+#### View Options
+`~/.virtualenvs/cw/bin/python3 /home/ubuntu/muad-dweeb/cw/scrape/spreadsheet_scrape.py -h`
 
-`./python scrape/spreadsheet_scrape.py -h`
+#### Scrape the specified config for 5 Hours using IC
+`~/.virtualenvs/cw/bin/python3 /home/ubuntu/muad-dweeb/cw/scrape/spreadsheet_scrape.py --config whatcom_duplexes_350_plus --limit-minutes 300 --email-report --site ic --environment ec2`
 
 # Sheet Manager
 
