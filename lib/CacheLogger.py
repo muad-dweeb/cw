@@ -55,7 +55,8 @@ class CacheLogger(object):
         caller = inspect.stack()[1].function
         cache_message = self._augment_message(message, 'DEBUG')
         self._logger.debug(message, extra={'caller': caller})
-        self.cache.append(cache_message)
+        if self._debug:
+            self.cache.append(cache_message)
         self._prune_cache()
 
     def warning(self, message):
