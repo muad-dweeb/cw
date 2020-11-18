@@ -164,8 +164,7 @@ class ICScraper(Scraper):
 
             # Basic validation against canonical search params
             if found_first.lower() != first.lower() or \
-                    found_last.lower() != last.lower() or \
-                    found_city.lower() != city.lower():
+                    found_last.lower() != last.lower():
                 continue
 
             # Secondary validation to make sure the most recent location matches the input city
