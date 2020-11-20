@@ -68,14 +68,17 @@ class Scraper(object):
         self.logger.debug('Session cookies saved to: {}'.format(file_path))
 
     def load_session_cookies(self, file_path):
-        for cookie in pickle.load(open(file_path, 'rb')):
-            for key, value in cookie.items():
-                value = str(value)
-                try:
-                    self._driver.add_cookie({'name': key, 'value': value})
-                except InvalidArgumentException as e:
-                    raise ScraperException('Failed to add cookie key \'{}\' to session. Error: {}'.format(key, e))
-        self.logger.debug('Session cookies loaded from: {}'.format(file_path))
+        if path.isfile(file_path):
+            for cookie in pickle.load(open(file_path, 'rb')):
+                for key, value in cookie.items():
+                    value = str(value)
+                    try:
+                        self._driver.add_cookie({'name': key, 'value': value})
+                    except InvalidArgumentException as e:
+                        raise ScraperException('Failed to add cookie key \'{}\' to session. Error: {}'.format(key, e))
+            self.logger.debug('Session cookies loaded from: {}'.format(file_path))
+        else:
+            self.logger.debug('No cookies found at: {}'.format(file_path))
 
     def _load_page(self, url, retry=3):
         success = False

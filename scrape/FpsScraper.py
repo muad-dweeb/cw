@@ -29,11 +29,9 @@ class FpsScraper(Scraper):
         :return:
         """
         try:
+            # Does this do anything useful? WHO KNOWS!!!!!!!!
+            self.load_session_cookies(cookie_file)
             self._load_page(self.root, retry=42)
-            if os.path.isfile(cookie_file):
-                # Does this do anything useful? WHO KNOWS!!!!!!!!
-                self.load_session_cookies(cookie_file)
-                self._driver.refresh()
             self.save_session_cookies(cookie_file)
             self.logger.info('Site load successful')
         except ScraperException as e:

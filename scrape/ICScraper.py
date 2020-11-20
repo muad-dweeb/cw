@@ -34,15 +34,18 @@ class ICScraper(Scraper):
         :return:
         """
         login_url = self.root + '/login'
+
+        self.load_session_cookies(cookie_file)
+
         try:
             self._load_page(login_url)
         except ScraperException as e:
             raise ScraperException('Unable to load login page: {}. {}'.format(login_url, e))
 
-        if os.path.isfile(cookie_file):
-            # Yeah, this definitely doesn't do anything useful...
-            self.load_session_cookies(cookie_file)
-            self._driver.refresh()
+        # if os.path.isfile(cookie_file):
+        #     # Yeah, this definitely doesn't do anything useful...
+        #     self.load_session_cookies(cookie_file)
+        #     self._driver.refresh()
 
         # Verify login success
         success = False
