@@ -31,9 +31,8 @@ class BVScraper(Scraper):
         config = get_config(config_path=config_path)
         login_url = self.root + '/login'
         try:
-            if os.path.isfile(cookie_file):
-                # Does this do anything useful? WHO KNOWS!!!!!!!!
-                self.load_session_cookies(cookie_file)
+            # Does this do anything useful? WHO KNOWS!!!!!!!!
+            self.load_session_cookies(cookie_file)
             self._load_page(login_url)
         except ScraperException as e:
             raise ScraperException('Unable to load login page: {}. {}'.format(login_url, e))

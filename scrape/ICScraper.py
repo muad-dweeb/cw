@@ -34,15 +34,18 @@ class ICScraper(Scraper):
         :return:
         """
         login_url = self.root + '/login'
+
+        self.load_session_cookies(cookie_file)
+
         try:
             self._load_page(login_url)
         except ScraperException as e:
             raise ScraperException('Unable to load login page: {}. {}'.format(login_url, e))
 
-        if os.path.isfile(cookie_file):
-            # Yeah, this definitely doesn't do anything useful...
-            self.load_session_cookies(cookie_file)
-            self._driver.refresh()
+        # if os.path.isfile(cookie_file):
+        #     # Yeah, this definitely doesn't do anything useful...
+        #     self.load_session_cookies(cookie_file)
+        #     self._driver.refresh()
 
         # Verify login success
         success = False
@@ -164,8 +167,11 @@ class ICScraper(Scraper):
 
             # Basic validation against canonical search params
             if found_first.lower() != first.lower() or \
-                    found_last.lower() != last.lower() or \
-                    found_city.lower() != city.lower():
+                    found_last.lower() != last.lower():
+                continue
+
+            # Don't call dead people, they aren't likely to answer
+            if found_age is not None and 'deceased' in found_age.lower():
                 continue
 
             # Secondary validation to make sure the most recent location matches the input city
