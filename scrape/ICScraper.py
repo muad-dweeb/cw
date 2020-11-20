@@ -167,6 +167,10 @@ class ICScraper(Scraper):
                     found_last.lower() != last.lower():
                 continue
 
+            # Don't call dead people, they aren't likely to answer
+            if found_age is not None and 'deceased' in found_age.lower():
+                continue
+
             # Secondary validation to make sure the most recent location matches the input city
             locations_list = result.find_elements_by_class_name('person-location')
 
