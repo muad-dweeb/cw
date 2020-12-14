@@ -1,9 +1,8 @@
-import os
 import time
 from datetime import datetime
 
-from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import NoSuchElementException
+from selenium.webdriver.common.keys import Keys
 
 from lib.exceptions import ScraperException
 from scrape.Scraper import Scraper
