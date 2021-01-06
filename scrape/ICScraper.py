@@ -181,7 +181,11 @@ class ICScraper(Scraper):
                 continue
 
             # First listed city does not match
-            if locations_list[0].text.split(',')[0].lower() != city.lower():
+            # if locations_list[0].text.split(',')[0].lower() != city.lower():
+            #     continue
+
+            # City is not in the listed locations
+            if city.lower() not in [x.text.split(',')[0].lower() for x in locations_list]:
                 continue
 
             self.logger.info('Result: {}, Age: {}, City: {}'.format(found_full, found_age, found_city))
