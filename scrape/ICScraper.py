@@ -16,7 +16,7 @@ class ICScraper(Scraper):
         self.root = 'https://www.instantcheckmate.com/dashboard'
 
         site_specific_error_strings = {'404 Error': 'Uh Oh! Looks like something went wrong.',
-                                       '504 Error': 'we\'ve encountered an error.',
+                                       '504 Error': 'Gateway time-out',
                                        '500 Error': 'HTTP ERROR 500',
                                        '502 Error': 'The web server reported a bad gateway error.'}
 
@@ -53,7 +53,12 @@ class ICScraper(Scraper):
                 self._driver.find_element_by_id('report-history')
                 success = True
             except NoSuchElementException:
-                time.sleep(2)
+                if self._error_strings['504 Error'] in self._driver.page_source:
+                    self.logger.error('504 Error detected.')
+                    self._driver.refresh()
+                    self.random_sleep((0, 20))
+                else:
+                    time.sleep(2)
 
         self.logger.info('Login successful')
         self.save_session_cookies(cookie_file)
