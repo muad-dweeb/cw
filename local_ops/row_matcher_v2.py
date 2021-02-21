@@ -5,9 +5,9 @@ from csv import DictReader
 
 # Broker Match Sheet to Master File mapping
 mapping = {
-    'Office Phone': ['Owner1 Phone Master', 'Owner2 Phone Master'],
-    'Cell Phone': ['Owner1 Phone Master', 'Owner2 Phone Master'],
-    'Email': ['Owner1 Email Master', 'Owner2 Email Master']
+    'Office Phone': ['Owner1 Phone', 'Owner2 Phone'],
+    'Cell Phone': ['Owner1 Phone', 'Owner2 Phone'],
+    'Email': ['Owner1 Email', 'Owner2 Email']
 }
 
 
