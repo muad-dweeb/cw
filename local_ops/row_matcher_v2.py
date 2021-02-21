@@ -54,6 +54,8 @@ def match_rows(broker_file, master_file, output_file):
                     break
 
                 for broker_key, mapped_columns in mapping.items():
+                    if matched:
+                        break
                     if broker_row[broker_key] == '':
                         continue
                     for column in mapped_columns:
@@ -66,12 +68,11 @@ def match_rows(broker_file, master_file, output_file):
                             print('Row {} Matched: {}'.format(total_master_rows + 1, broker_row[broker_key]))
                             break
 
-                if matched:
-                    f.write('True\n')
-                    total_matched_rows += 1
-                    continue
-                else:
-                    f.write('False\n')
+            if matched:
+                f.write('True\n')
+                total_matched_rows += 1
+            else:
+                f.write('False\n')
 
     print('-------------------')
     print('Results saved to:   {}'.format(out_path))
