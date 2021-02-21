@@ -63,7 +63,7 @@ def match_rows(broker_file, master_file, output_file):
                         normalized_master_value = normalize_cell_text(master_row[column])
                         if normalized_broker_value in normalized_master_value.split(','):
                             matched = True
-                            print('Matched: {}'.format(broker_row[broker_key]))
+                            print('Row {} Matched: {}'.format(total_master_rows + 1, broker_row[broker_key]))
                             break
 
                 if matched:
