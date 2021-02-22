@@ -1,4 +1,5 @@
 import os
+import re
 from argparse import ArgumentParser
 from csv import DictReader
 
@@ -17,6 +18,11 @@ def normalize_cell_text(cell_content):
     :param cell_content: Raw string
     :return: Normalized string
     """
+    # Remove any phone-type tags
+    try:
+        cell_content = ''.join(re.split(' *\\([A-Za-z]+\\)', cell_content))
+    except TypeError as e:
+        raise TypeError('Failed to regex search on cell: {}. {}'.format(cell_content, e))
 
     remove_characters = {'(', ')', '-', ' '}
 
