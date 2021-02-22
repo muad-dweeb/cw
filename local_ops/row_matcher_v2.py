@@ -67,6 +67,8 @@ def match_rows(broker_file, master_file, output_file):
                     for column in mapped_columns:
                         if column not in master_row.keys():
                             continue
+                        if master_row[column] is None:
+                            continue
                         normalized_broker_value = normalize_cell_text(broker_row[broker_key])
                         normalized_master_value = normalize_cell_text(master_row[column])
                         if normalized_broker_value in normalized_master_value.split(','):
