@@ -1,0 +1,9 @@
+{
+    "location": "~/muad-dweeb/cw/data/whatcom_duplexes_350_plus.csv",
+    "id_column": "Parcel",
+    "id_char_count": "16",
+    "first_name_column": "OWNER \\d FIRST",
+    "last_name_column": "OWNER \\d LAST",
+    "state_column": "OwnerState",
+    "city_column": "OwnerCityNm"
+}
