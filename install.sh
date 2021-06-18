@@ -17,6 +17,7 @@ if [[ -z "$(command -v pip)" ]]; then
     if [[ "$OSTYPE" == "linux-gnu" ]]; then
         echo 'Linux OS detected'
         sudo apt install -y python-pip
+        "export PYTHONPATH=/home/ubuntu/muad-dweeb/cw" >> ${HOME}/.bashrc
 
     elif [[ "$OSTYPE" == "darwin"* ]]; then
         echo 'Mac OS detected'
@@ -43,7 +44,6 @@ pip install -r requirements.txt
 
 ln -s ${VENV_ROOT}/bin/python ${SCRIPT_DIR}/python
 
-"export PYTHONPATH=/home/ubuntu/muad-dweeb/cw" >> ${HOME}/.bashrc
 
 
 ####################
